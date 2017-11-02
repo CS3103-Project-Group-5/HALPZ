@@ -104,7 +104,7 @@ class Tracker {
 		Collections.shuffle(peerIDList); //we can use other shuffle algorithms if the peerIDList gets too large to maintain.
 		ArrayList<PeerInfo> peerInfoList = new ArrayList<PeerInfo>();
 		int possibleNumPeerToSend = Math.min(peerIDList.size(), NUM_PEERS_TO_SEND);
-		for (int i = 0; i <=possibleNumPeerToSend; i++) {
+		for (int i = 0; i < possibleNumPeerToSend; i++) {
 			peerInfoList.add(peerMap.get(peerIDList.get(i)));
 		}
 		return peerInfoList;
