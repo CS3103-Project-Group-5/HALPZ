@@ -48,8 +48,12 @@ public class Client {
                     System.out.println("Please input file name.");
                     input = scanner.nextLine();
                     fileSize = TrackerManager.getFileSize(input);
-                    System.out.println("Filename: " + input + ", Filesize: " + fileSize);
-                    break;
+					if (fileSize == -1) {
+                    	System.out.println("File does not exist.");
+					} else {
+                    	System.out.println("Filename: " + input + ", Filesize: " + fileSize);
+                    }
+					break;
 
                 case 3:
                     System.out.println("Please input file name.");
