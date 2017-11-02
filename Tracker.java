@@ -92,6 +92,9 @@ class Tracker {
 	}
 
 	private static long getFileSize(String fileName) {
+		if (fileList.get(fileName) == null) {
+			return -1;
+		}
 		return (fileList.get(fileName)).getFileSize();
 	}
 
