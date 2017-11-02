@@ -255,7 +255,7 @@ public class Client {
 
 class TrackerManager {
 
-	private static final String TRACKER_ADDRESS = "128.199.108.79";
+	private static final String TRACKER_ADDRESS = "172.25.98.74";
 	private static final int TRACKER_PORT = 1234;
 	private Socket socket;
 	private ObjectOutputStream out;
