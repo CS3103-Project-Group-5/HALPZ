@@ -5,25 +5,13 @@ import java.io.*;
 import java.net.*;
 
 public class Client {
-//    private final UUID TRACKER_ID = UUID.randomUUID();
-    //private final InetAddress TRACKER_IP = InetAddress.getByName("%TRACKER_IP%");
-//    private final int TRACKER_PORT = 1234;
-
-    //   private UUID myID;
-//    private NetworkManager networkManager;
 
     public static void main(String[] args) throws Exception {
-        // Generate unique ID
-//        myID = UUID.randomUUID();
-
-        // Init aux var
-        // networkManager = new NetworkManager();
 
         Scanner scanner = new Scanner(System.in);
 
         // Wait for a request of user
         int option = -1, chunkSize = 256 * 1024;
-        ;
         String input;
         long fileSize;
         ArrayList<PeerInfo> peerList;
@@ -31,11 +19,11 @@ public class Client {
         TrackerMessage.MODE mode;
 
         while (option != 5) {
-            System.out.println("Select an option:\n");
-            System.out.println("1. Query the centralised server for list of files available.\n");
-            System.out.println("2. Query the centralised server for a specific file.\n");
-            System.out.println("3. Download a file by specifying the filename.\n");
-            System.out.println("4. Inform availability of a new file.\n");
+            System.out.println("\nSelect an option:");
+            System.out.println("1. Query the centralised server for list of files available.");
+            System.out.println("2. Query the centralised server for a specific file.");
+            System.out.println("3. Download a file by specifying the filename.");
+            System.out.println("4. Inform availability of a new file.");
             System.out.println("5. Exit.\n");
 
             try {
