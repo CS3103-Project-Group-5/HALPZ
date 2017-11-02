@@ -6,15 +6,20 @@ import java.net.*;
 
 public class Client {
 
-    public BitSet chunkList;
+    private static BitSet inprogress;
+	private static BitSet completed;
+	private static RandomAccessFile RAFile;
+	private static int chunkSize;
+	private static int peerNumber;
+	private static String fileName;
 
 	public static void main(String[] args) throws Exception {
 
 		Scanner scanner = new Scanner(System.in);
 
 		// Wait for a request of user
-		int option = -1, chunkSize = 256 * 1024;
-		String input;
+		int option = -1;
+		chunkSize = 256 * 1024;
 		long fileSize;
 		ArrayList<PeerInfo> peerList;
 		TrackerMessage.MODE mode;
@@ -47,37 +52,40 @@ public class Client {
 					}
 				case 2:
 					System.out.println("Please input file name.");
-					input = scanner.nextLine();
-					fileSize = TrackerManager.getFileSize(input);
+					fileName = scanner.nextLine();
+					fileSize = TrackerManager.getFileSize(fileName);
 					if (fileSize == -1) {
 						System.out.println("File does not exist.");
 					} else {
-						System.out.println("Filename: " + input + ", Filesize: " + fileSize);
+						System.out.println("Filename: " + fileName + ", Filesize: " + fileSize);
 					}
 					break;
 
 				case 3:
 					System.out.println("Please input file name.");
-					input = scanner.nextLine();
-					TrackerMessage msg = TrackerManager.getDownloadInfo(input);
+					fileName = scanner.nextLine();
+					TrackerMessage msg = TrackerManager.getDownloadInfo(fileName);
 					fileSize = msg.getFileSize();
 					peerList = msg.getPeerList();
-					chunkList = new BitSet((int) Math.ceil(fileSize / (double) chunkSize)); // <-- need to load file
+					peerNumber = peerList.size();
+					inprogress = new BitSet((int) Math.ceil(fileSize / (double) chunkSize)); // <-- need to load file
+					completed = (BitSet)inprogress.clone();
 					/* call peer class to do the p2p */
 					break;
 
 				case 4:
 					System.out.println("Please input location of file to upload.");
-					input = scanner.nextLine();
-					File file = new File(input);
+					fileName = scanner.nextLine();
+					File file = new File(fileName);
 					if (!file.exists()) {
 						System.out.println("File not found, exiting...");
 						break;
 					}
 					fileSize = file.length();
-					chunkList = new BitSet((int) Math.ceil(fileSize / (double) chunkSize));
-					chunkList.flip(0, chunkList.length());
-					TrackerManager.initializeUpload(input, fileSize);
+					inprogress = new BitSet((int) Math.ceil(fileSize / (double) chunkSize));
+					inprogress.flip(0, inprogress.length());
+					completed = (BitSet)inprogress.clone();
+					TrackerManager.initializeUpload(fileName, fileSize);
 					break;
 
 			}
@@ -98,10 +106,50 @@ public class Client {
 		}
 	}
 
+	private static void writeToFile(int id, byte[] data) throws IOException {
+		RAFile.seek(id*Client.chunkSize);
+		RAFile.write(data);
+		completed.set(id);
+	}
+
+	private static byte[] readFromFile(int id) throws IOException {
+		RAFile.seek(id*chunkSize);
+		byte[] bytes = new byte[chunkSize];
+		RAFile.read(bytes);
+		return bytes;
+	}
+
+	private static int getDesiredChunkID(BitSet others) {
+		int chunkID = (int)Math.random() * inprogress.length();
+		while (true) {
+			try {
+				chunkID = inprogress.nextClearBit(chunkID);
+			} catch (IndexOutOfBoundsException e) {
+				return -1;
+			}
+			if (others.get(chunkID)) break;
+		}
+		inprogress.set(chunkID);
+		return chunkID;
+	}
+
 	private static void start(ArrayList<PeerInfo> list) {
+		int welcomePort = 1235;
+		File file = new File(fileName);
+
+		try {
+			if (!file.exists()) {
+				file.createNewFile();
+			}
+			RAFile = new RandomAccessFile(file, "rwd");
+		} catch (Exception e) {
+			e.printStackTrace();
+			return;
+		}
+
 		for (PeerInfo info : list) {
 			try {
-				new Thread(new Peer(new Socket(info.getPeerIP(), info.getPeerPort()))).start();
+				new Thread(new Peer(new Socket(info.getPeerIP(), welcomePort))).start();
 			} catch (Exception e) {
 				e.printStackTrace();
 				continue;
@@ -111,6 +159,7 @@ public class Client {
 		ServerSocket welcomeSocket;
 		try {
 			welcomeSocket = new ServerSocket(welcomePort);
+			peerNumber++;
 		} catch (Exception e) {
 			System.out.println("Welcome port in use.");
 			e.printStackTrace();
@@ -129,60 +178,70 @@ public class Client {
 		}
 	}
 
-//To access the bitset from the main class, use Client.this.chunkList to access.
+//To access the bitset from the main class, use Client.chunkList to access.
 	static class Peer implements Runnable {
 		private Socket socket;
 		private ObjectOutputStream out;
 		private ObjectInputStream in;
-		private BitSet
+		private BitSet otherChunkList;
 		//private ArrayList<Integer> desiredChunkList;
 
-		public Peer(Socket socket) {
+		public Peer(Socket socket) throws IOException {
 			socket = socket;
 			out = new ObjectOutputStream(socket.getOutputStream());
 			in = new ObjectInputStream(socket.getInputStream());
 		}
 
 		public void run() {
-			sendChunkList();
-			ArrayList<Integer> otherChunkList = receiveChunkList();
-			if (otherChunkList.size() > 0) {
-				ArrayList<Integer> desiredChunkList = getDesiredChunkList();
-				if (desiredChunkList.size() > 0) {
-					sendChunkRequest(desiredChunkList);
+			try {
+				sendChunkRequest(-1);
+
+				ClientMessage msg;
+				while (true) {
+					msg = receiveMsg();
+					if (msg.getType() == ClientMessage.MODE.DATA) {
+						writeToFile(msg.getChunkID(), msg.getData());
+						otherChunkList = msg.getChunkList();
+						int desiredChunkID = getDesiredChunkID(otherChunkList);
+						sendChunkRequest(desiredChunkID);
+					} else if (msg.getType() == ClientMessage.MODE.REQUEST) {
+						int chunkRequest = msg.getChunkID();
+						sendChunks(chunkRequest);
+					} else {
+						System.out.println("Unknown message.");
+					}
+					try {
+						Client.completed.nextClearBit(0);
+					} catch (IndexOutOfBoundsException e) {
+						break;
+					}
 				}
-			}
-
-			ClientMessage msg;
-			while (true) {
-				msg = receiveMsg();
-				if (msg.type == ClientMessage.MODE.DATA) {
-					writeToFile();
-
-				} else if (msg.type == ClientMessage.MODE.REQUEST) {
-				} else {
-					System.out.println("Unknown message.");
-				}
+			} catch (Exception e) {
+				System.out.println("Peer thread error");
+				e.printStackTrace();
 			}
 		}
 
-		private void sendChunkList() {
+		private ClientMessage receiveMsg() throws Exception {
+			ClientMessage msg = (ClientMessage)in.readObject();
+			return msg;
 		}
 
-		private ClientMessage receiveMsg() {
+		private void sendChunkRequest(int id) throws IOException {
+			if (id == -1){
+				out.writeObject(new ClientMessage(Client.completed));
+			} else {
+				out.writeObject(new ClientMessage(id, Client.completed));
+			}
 		}
 
-		private void sendChunkRequest() {
+		private void sendChunks(int id) throws IOException {
+			byte[] data = Client.readFromFile(id);
+			out.writeObject(new ClientMessage(data, Client.completed));
 		}
 
-		private void sendChunks() {
-		}
-
-		private ArrayList<Integer> getDesiredChunkList() {
-			return null;
-		}
-
-		private void writeToFile() {
+		private int getDesiredChunkID(BitSet others) {
+			return Client.getDesiredChunkID(others);
 		}
 
 		private void readFromFile() {
@@ -190,9 +249,6 @@ public class Client {
 
 		private int getChunkOffset(int number) {
 			return 0;
-		}
-
-		private void removeFileStatus() {
 		}
 	}
 }
@@ -273,23 +329,23 @@ class ClientMessage implements Serializable {
 
     private MODE type;
     private int chunkID;
-    private byte[256*1024] data;
+    private byte[] data = new byte[256*1024];
     private BitSet chunkList;
 
     public ClientMessage(byte[] data, BitSet chunkList) {
-        this.MODE = DATA;
+        this.type = MODE.DATA;
         this.data = data;
         this.chunkList = chunkList;
     }
 
     public ClientMessage(int chunkID, BitSet chunkList) {
-        this.MODE = REQUEST;
+        this.type = MODE.REQUEST;
         this.chunkID = chunkID;
-        this.chunkList;
+        this.chunkList = chunkList;
     }
 
     public ClientMessage(BitSet chunkList) {
-        this.MODE = UPDATE;
+        this.type = MODE.UPDATE;
         this.chunkList = chunkList;
     }
 
