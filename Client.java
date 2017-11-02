@@ -1,26 +1,29 @@
 import java.io.File;
 import java.net.InetAddress;
 import java.util.*;
+import java.io.*;
+import java.net.*;
 
 public class Client {
 //    private final UUID TRACKER_ID = UUID.randomUUID();
     //private final InetAddress TRACKER_IP = InetAddress.getByName("%TRACKER_IP%");
 //    private final int TRACKER_PORT = 1234;
 
- //   private UUID myID;
+    //   private UUID myID;
 //    private NetworkManager networkManager;
 
-    public static void main(String[] args) throws Exception{
+    public static void main(String[] args) throws Exception {
         // Generate unique ID
 //        myID = UUID.randomUUID();
 
         // Init aux var
         // networkManager = new NetworkManager();
 
-        Scanner scanner = new Scanner (System.in);
+        Scanner scanner = new Scanner(System.in);
 
         // Wait for a request of user
-        int option = -1, chunkSize = 256 * 1024;;
+        int option = -1, chunkSize = 256 * 1024;
+        ;
         String input;
         long fileSize;
         ArrayList<PeerInfo> peerList;
@@ -35,14 +38,14 @@ public class Client {
             System.out.println("4. Inform availability of a new file.\n");
             System.out.println("5. Exit.\n");
 
-			try {
-            	option = scanner.nextInt();
-				scanner.nextLine();
-			} catch (Exception e) {
-				System.out.println("Please enter a valid command.");
-				scanner.nextLine();
-				continue;
-			}
+            try {
+                option = scanner.nextInt();
+                scanner.nextLine();
+            } catch (Exception e) {
+                System.out.println("Please enter a valid command.");
+                scanner.nextLine();
+                continue;
+            }
             switch (option) {
                 case 1:
                     try {
@@ -66,7 +69,7 @@ public class Client {
                     TrackerMessage msg = TrackerManager.getDownloadInfo(input);
                     fileSize = msg.getFileSize();
                     peerList = msg.getPeerList();
-                    chunkList = new BitSet((int)Math.ceil(fileSize / (double)chunkSize)); // <-- need to load file
+                    chunkList = new BitSet((int) Math.ceil(fileSize / (double) chunkSize)); // <-- need to load file
                     /* call peer class to do the p2p */
                     break;
 
@@ -79,7 +82,7 @@ public class Client {
                         break;
                     }
                     fileSize = file.length();
-                    chunkList = new BitSet((int)Math.ceil(fileSize / (double)chunkSize));
+                    chunkList = new BitSet((int) Math.ceil(fileSize / (double) chunkSize));
                     chunkList.flip(0, chunkList.length());
                     TrackerManager.initializeUpload(input, fileSize);
                     break;
@@ -102,7 +105,8 @@ public class Client {
             System.out.println(s);
         }
     }
-    public class TrackerManager {
+}
+class TrackerManager {
 
 	private static final String TRACKER_ADDRESS = "128.199.108.79";
 	private static final int TRACKER_PORT = 1234;
@@ -167,7 +171,5 @@ public class Client {
 		long fileSize = tracker.receive().getFileSize();
 		return fileSize;
 	}
-
-}
 
 }
