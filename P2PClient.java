@@ -1,174 +1,108 @@
+import java.io.File;
+import java.net.InetAddress;
 import java.util.*;
-import java.io.*;
-import java.net.*;
 
-public class P2PClient {
+public class Client {
+//    private final UUID TRACKER_ID = UUID.randomUUID();
+    //private final InetAddress TRACKER_IP = InetAddress.getByName("%TRACKER_IP%");
+//    private final int TRACKER_PORT = 1234;
 
-/* Usage
-	java P2PClient list 
-		- return list of files recorded on tracker
-	java P2PClient upload myfile
-		- return a list of peers to upload file
-		- upload
-	java P2PClient download hisfile
-		- return a list of peers to download from
-		- download
-*/
+ //   private UUID myID;
+//    private NetworkManager networkManager;
 
-	private static TrackerMessage.MODE mode;
-	private static String fileName;
-	private static ArrayList<PeerInfo> peerList;
-	private static long selfID;
-	private static long fileSize = -1;
-	private static int welcomePort = 4949;
-	private static int chunkSize = 256 * 1024;
+    public static void main(String[] args) throws Exception{
+        // Generate unique ID
+//        myID = UUID.randomUUID();
 
-	private static BitSet chunkList;
+        // Init aux var
+        // networkManager = new NetworkManager();
 
-	public static void main(String[] args) {
-		String m = args[0];
-		try {
-			mode = TrackerMessage.MODE.valueOf(m.toUpperCase());
-		} catch (Exception e) {
-			e.printStackTrace();
-			return;
-		}
+        Scanner scanner = new Scanner (System.in);
 
-		if (mode.equals(TrackerMessage.MODE.LIST)) {
+        // Wait for a request of user
+        int option = -1, chunkSize = 256 * 1024;;
+        String input;
+        long fileSize;
+        ArrayList<PeerInfo> peerList;
+        BitSet chunkList;
+        TrackerMessage.MODE mode;
+
+        while (option != 5) {
+            System.out.println("Select an option:\n");
+            System.out.println("1. Query the centralised server for list of files available.\n");
+            System.out.println("2. Query the centralised server for a specific file.\n");
+            System.out.println("3. Download a file by specifying the filename.\n");
+            System.out.println("4. Inform availability of a new file.\n");
+            System.out.println("5. Exit.\n");
+
 			try {
-				printFileList(Tracker.getFileList());
-				return;
+            	option = scanner.nextInt();
+				scanner.nextLine();
 			} catch (Exception e) {
-				System.out.println("Tracker error");
-				e.printStackTrace();
-				return;
-			}
-		}
-
-		fileName = args[1];
-		System.out.println("Initiating " + mode + " for file " + fileName);
-	
-		selfID = generateID();
-		TrackerMessage.MODE cmd = TrackerMessage.MODE.LIST;
-
-		try {
-			if (mode.equals(TrackerMessage.MODE.UPLOAD)) {
-				cmd = TrackerMessage.MODE.UPLOAD;
-				File file = new File(fileName);
-				if (!file.exists()) {
-					System.out.println("File not found, exiting...");
-					return;
-				}
-				fileSize = file.length();
-				chunkList = new BitSet((int)Math.ceil(fileSize / (double)chunkSize));
-				chunkList.flip(0, chunkList.length());
-				Tracker.initializeUpload(mode, fileName, fileSize);
-			} else if (mode.equals(TrackerMessage.MODE.DOWNLOAD)) {
-				TrackerMessage msg = Tracker.getDownloadInfo(mode, fileName);
-				fileSize = msg.getFileSize();
-				peerList = msg.getPeerList();
-				chunkList = new BitSet((int)Math.ceil(fileSize / (double)chunkSize)); // <-- need to load file status from disk
-			}
-		} catch (Exception e) {
-			System.out.println("Tracker error");
-			e.printStackTrace();
-			return;
-		}
-
-		//start(peerList);
-	}
-
-	private static long generateID() {
-		Random rnd = new Random(506);
-		return rnd.nextLong();
-	}
-
-	private static void printFileList(Set<String> list) {
-		System.out.println("File list: ");
-		for (String s : list) {
-			System.out.println(s);
-		}
-	}
-
-	private static void start(ArrayList<PeerInfo> list) {
-		for (PeerInfo info : list) {
-			try {
-				new Thread(new Peer(new Socket(info.getPeerIP(), info.getPeerPort()))).start();
-			} catch (Exception e) {
-				e.printStackTrace();
+				System.out.println("Please enter a valid command.");
+				scanner.nextLine();
 				continue;
 			}
-		}
+            switch (option) {
+                case 1:
+                    try {
+                        printFileList(TrackerManager.getFileList());
+                        break;
+                    } catch (Exception e) {
+                        System.out.println("Tracker error");
+                        e.printStackTrace();
+                        break;
+                    }
+                case 2:
+                    System.out.println("Please input file name.");
+                    input = scanner.nextLine();
+                    fileSize = TrackerManager.getFileSize(input);
+                    System.out.println("Filename: " + input + ", Filesize: " + fileSize);
+                    break;
 
-		ServerSocket welcomeSocket;
-		try {
-			welcomeSocket = new ServerSocket(welcomePort);
-		} catch (Exception e) {
-			System.out.println("Welcome port in use.");
-			e.printStackTrace();
-			return;
-		} 
+                case 3:
+                    System.out.println("Please input file name.");
+                    input = scanner.nextLine();
+                    TrackerMessage msg = TrackerManager.getDownloadInfo(input);
+                    fileSize = msg.getFileSize();
+                    peerList = msg.getPeerList();
+                    chunkList = new BitSet((int)Math.ceil(fileSize / (double)chunkSize)); // <-- need to load file
+                    /* call peer class to do the p2p */
+                    break;
 
-		while (true) {
-			try {
-				Socket connectionSocket = welcomeSocket.accept();
-				System.out.println("New peer connected " + connectionSocket.getInetAddress().getHostAddress());
-				new Thread(new Peer(connectionSocket)).start();
-			} catch (Exception e) {
-				e.printStackTrace();
-				continue;
-			}
-		}
-	}
+                case 4:
+                    System.out.println("Please input location of file to upload.");
+                    input = scanner.nextLine();
+                    File file = new File(input);
+                    if (!file.exists()) {
+                        System.out.println("File not found, exiting...");
+                        break;
+                    }
+                    fileSize = file.length();
+                    chunkList = new BitSet((int)Math.ceil(fileSize / (double)chunkSize));
+                    chunkList.flip(0, chunkList.length());
+                    TrackerManager.initializeUpload(input, fileSize);
+                    break;
 
-	static class Peer implements Runnable {
-		private Socket socket;
-		private ObjectOutputStream out;
-		private ObjectInputStream in;
+            }
+        }
 
-		public Peer(Socket socket) {
-			socket = socket;
-		}
-		
-		public void run() {
-		}
+        scanner.close();
+    }
 
-		private void sendChunkList() {
-		}
+    /* Helper Methods */
+    private static long generateID() {
+        Random rnd = new Random(506);
+        return rnd.nextLong();
+    }
 
-		private void receiveChunkList() {
-		}
-
-		private void sendChunkRequest() {
-		}
-
-		private void sendChunks() {
-		}
-
-		private void receiveChunks() {
-		}
-
-		private ArrayList<Integer> getDesiredChunkList() {
-			return null;
-		}
-
-		private void writeToFile() {
-		}
-
-		private void readFromFile() {
-		}
-
-		private int getChunkOffset(int number) {
-			return 0;
-		}
-
-		private void removeFileStatus() {
-		}
-	}
-
-}
-
-class Tracker {
+    private static void printFileList(Set<String> list) {
+        System.out.println("File list: ");
+        for (String s : list) {
+            System.out.println(s);
+        }
+    }
+    public class TrackerManager {
 
 	private static final String TRACKER_ADDRESS = "128.199.108.79";
 	private static final int TRACKER_PORT = 1234;
@@ -176,7 +110,7 @@ class Tracker {
 	private ObjectOutputStream out;
 	private ObjectInputStream in;
 
-	private Tracker() throws Exception {
+	private TrackerManager() throws Exception {
 		socket = new Socket(TRACKER_ADDRESS, TRACKER_PORT);
 		out = new ObjectOutputStream(socket.getOutputStream());
 		in = new ObjectInputStream(socket.getInputStream());
@@ -196,32 +130,44 @@ class Tracker {
 		return msg;
 	}
 
-	public static void initializeUpload(TrackerMessage.MODE cmd, String fileName, long fileSize) throws Exception {
-		Tracker tracker = new Tracker();
+	public static void initializeUpload(String fileName, long fileSize) throws Exception {
+		TrackerManager tracker = new TrackerManager();
 		TrackerMessage msg = new TrackerMessage();
-		msg.setCmd(cmd);
+		msg.setCmd(TrackerMessage.MODE.UPLOAD);
 		msg.setFileName(fileName);
 		msg.setFileSize(fileSize);
 		tracker.send(msg); //0 - getFileList; 1 - download; 2 - upload
 		tracker.receive();
 	}
 
-	public static TrackerMessage getDownloadInfo(TrackerMessage.MODE cmd, String fileName) throws Exception {
-		Tracker tracker = new Tracker();
+	public static TrackerMessage getDownloadInfo(String fileName) throws Exception {
+		TrackerManager tracker = new TrackerManager();
 		TrackerMessage msg = new TrackerMessage();
-		msg.setCmd(cmd);
+		msg.setCmd(TrackerMessage.MODE.DOWNLOAD);
 		msg.setFileName(fileName);
 		tracker.send(msg); //0 - getFileList; 1 - download; 2 - upload
 		return tracker.receive();
 	}
 
 	public static Set<String> getFileList() throws Exception {
-		Tracker tracker = new Tracker();
+		TrackerManager tracker = new TrackerManager();
 		TrackerMessage msg = new TrackerMessage();
-		msg.setCmd(TrackerMessage.MODE.LIST);
+		msg.setCmd(TrackerMessage.MODE.FILELIST);
 		tracker.send(msg); //0 - getFileList; 1 - download; 2 - upload
 		Set<String> list = tracker.receive().getFileList();
 		return list;
 	}
+
+	public static long getFileSize(String fileName) throws Exception {
+		TrackerManager tracker = new TrackerManager();
+		TrackerMessage msg = new TrackerMessage();
+		msg.setCmd(TrackerMessage.MODE.FILEINFO);
+		msg.setFileName(fileName);
+		tracker.send(msg);
+		long fileSize = tracker.receive().getFileSize();
+		return fileSize;
+	}
+
+}
 
 }

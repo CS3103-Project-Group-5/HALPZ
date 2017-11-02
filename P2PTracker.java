@@ -21,14 +21,14 @@ class P2PTracker {
 		while (true) {
 			Socket connectionSocket = welcomeSocket.accept();
 			System.out.println("Connected to a client ... ");
-			ois = new ObjectInputStream(connectionSocket.getInputStream()); 
+			ois = new ObjectInputStream(connectionSocket.getInputStream());
 			oos = new ObjectOutputStream(connectionSocket.getOutputStream());
 			clientIP = (connectionSocket.getInetAddress()).getHostAddress();
 			clientPort = connectionSocket.getPort();
 
 			incomingMessage = (TrackerMessage)ois.readObject();
 			outgoingMessage = processMessage(incomingMessage, clientIP, clientPort);
-			oos.writeObject(outgoingMessage);		
+			oos.writeObject(outgoingMessage);
 		}
 	}
 
@@ -36,19 +36,27 @@ class P2PTracker {
 		TrackerMessage.MODE cmd = incomingMessage.getCmd();
 		long peerID = incomingMessage.getPeerID();
 		TrackerMessage outgoingMessage = new TrackerMessage();
+		String requestedFile;
 
-		switch(cmd) {			
-			case LIST: 
+		switch(cmd) {
+			case FILELIST:
 				outgoingMessage.setFileList(new HashSet<String>(fileList.keySet()));
 				break;
 
+			case FILEINFO:
+				requestedFile = incomingMessage.getFileName();
+				long fileSize = getFileSize(requestedFile);
+				outgoingMessage.setFileSize(fileSize);
+				outgoingMessage.setFileName(requestedFile);
+				break;
+
 			case DOWNLOAD:
-				String requestedFile = incomingMessage.getFileName();
+				requestedFile = incomingMessage.getFileName();
 				ArrayList<PeerInfo> peerListToSend = getPeerInfoListToSend(requestedFile);
 				long requestedFileSize = getFileSize(requestedFile);
 				outgoingMessage.setPeerList(peerListToSend);
 				outgoingMessage.setFileSize(requestedFileSize);
-				createNewPeerRecord(peerID, new PeerInfo(peerID, peerIP, peerPort, requestedFile));				
+				createNewPeerRecord(peerID, new PeerInfo(peerID, peerIP, peerPort, requestedFile));
 				associatePeerWithFile(peerID, requestedFile);
 				break;
 
@@ -61,7 +69,7 @@ class P2PTracker {
 		}
 		return outgoingMessage;
 	}
-	
+
 
 	private static void createNewPeerRecord(long peerID, PeerInfo newPeer) {
 		peerMap.put(peerID, newPeer);
@@ -98,6 +106,7 @@ class P2PTracker {
 		}
 		return peerInfoList;
 	}
+
 
 	private static boolean peerIDListGreaterThanNumPeersToSend(int size) {
 		return size>NUM_PEERS_TO_SEND;

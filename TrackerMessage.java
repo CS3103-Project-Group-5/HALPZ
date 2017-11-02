@@ -4,7 +4,7 @@ import java.io.*;
 public class TrackerMessage implements Serializable {
 
 	public enum MODE {
-		LIST, UPLOAD, DOWNLOAD
+		FILELIST, FILEINFO, UPLOAD, DOWNLOAD
 	}
 
 	private MODE cmd; //0 - getFileList; 1 - download; 2 - upload
@@ -13,14 +13,14 @@ public class TrackerMessage implements Serializable {
 	private long fileSize;
 	private ArrayList<PeerInfo> peerList;
 	private Set<String> fileList;
-	
+
 	public TrackerMessage() {
 	}
 
 	public MODE getCmd() {
 		return this.cmd;
 	}
-	
+
 	public long getPeerID() {
 		return this.peerID;
 	}
@@ -44,7 +44,7 @@ public class TrackerMessage implements Serializable {
 	public void setCmd(MODE cmd) {
 		this.cmd = cmd;
 	}
-	
+
 	public void setPeerID(long id) {
 		this.peerID = id;
 	}
@@ -64,5 +64,5 @@ public class TrackerMessage implements Serializable {
 	public void setFileList(Set<String> list) {
 		this.fileList = list;
 	}
-	
+
 }
