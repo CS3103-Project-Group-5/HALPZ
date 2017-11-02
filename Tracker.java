@@ -2,7 +2,7 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 
-class P2PTracker {
+class Tracker {
 
 	private static HashMap<Long, PeerInfo> peerMap = new HashMap<Long, PeerInfo>();
 	private static HashMap<String, FileInfo> fileList = new HashMap<String, FileInfo>();
