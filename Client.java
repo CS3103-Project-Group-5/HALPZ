@@ -132,27 +132,48 @@ public class Client {
 		private Socket socket;
 		private ObjectOutputStream out;
 		private ObjectInputStream in;
+		private BitSet
+		//private ArrayList<Integer> desiredChunkList;
 
 		public Peer(Socket socket) {
 			socket = socket;
+			out = new ObjectOutputStream(socket.getOutputStream());
+			in = new ObjectInputStream(socket.getInputStream());
 		}
 
 		public void run() {
+			sendChunkList();
+			ArrayList<Integer> otherChunkList = receiveChunkList();
+			if (otherChunkList.size() > 0) {
+				ArrayList<Integer> desiredChunkList = getDesiredChunkList();
+				if (desiredChunkList.size() > 0) {
+					sendChunkRequest(desiredChunkList);
+				}
+			}
+
+			ClientMessage msg;
+			while (true) {
+				msg = receiveMsg();
+				if (msg.type == ClientMessage.MODE.DATA) {
+					writeToFile();
+
+				} else if (msg.type == ClientMessage.MODE.REQUEST) {
+				} else {
+					System.out.println("Unknown message.");
+				}
+			}
 		}
 
 		private void sendChunkList() {
 		}
 
-		private void receiveChunkList() {
+		private ClientMessage receiveMsg() {
 		}
 
 		private void sendChunkRequest() {
 		}
 
 		private void sendChunks() {
-		}
-
-		private void receiveChunks() {
 		}
 
 		private ArrayList<Integer> getDesiredChunkList() {
