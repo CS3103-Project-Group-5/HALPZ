@@ -6,6 +6,8 @@ import java.net.*;
 
 public class Client {
 
+    public BitSet chunkList;
+
 	public static void main(String[] args) throws Exception {
 
 		Scanner scanner = new Scanner(System.in);
@@ -15,7 +17,6 @@ public class Client {
 		String input;
 		long fileSize;
 		ArrayList<PeerInfo> peerList;
-		BitSet chunkList;
 		TrackerMessage.MODE mode;
 
 		while (option != 5) {
@@ -128,6 +129,7 @@ public class Client {
 		}
 	}
 
+//To access the bitset from the main class, use Client.this.chunkList to access.
 	static class Peer implements Runnable {
 		private Socket socket;
 		private ObjectOutputStream out;
@@ -239,5 +241,51 @@ class TrackerManager {
 		long fileSize = tracker.receive().getFileSize();
 		return fileSize;
 	}
+
+}
+
+class ClientMessage implements Serializable {
+
+    public enum MODE {
+        DATA, REQUEST, UPDATE
+    }
+
+    private MODE type;
+    private int chunkID;
+    private byte[256*1024] data;
+    private BitSet chunkList;
+
+    public ClientMessage(byte[] data, BitSet chunkList) {
+        this.MODE = DATA;
+        this.data = data;
+        this.chunkList = chunkList;
+    }
+
+    public ClientMessage(int chunkID, BitSet chunkList) {
+        this.MODE = REQUEST;
+        this.chunkID = chunkID;
+        this.chunkList;
+    }
+
+    public ClientMessage(BitSet chunkList) {
+        this.MODE = UPDATE;
+        this.chunkList = chunkList;
+    }
+
+    public MODE getType() {
+        return this.type;
+    }
+
+    public int getChunkID() {
+        return this.chunkID;
+    }
+
+    public byte[] getData() {
+        return this.data;
+    }
+
+    public BitSet getChunkList() {
+        return this.chunkList;
+    }
 
 }
