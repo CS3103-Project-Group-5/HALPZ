@@ -20,11 +20,11 @@ class Tracker {
 
 		while (true) {
 			Socket connectionSocket = welcomeSocket.accept();
-			System.out.println("Connected to a client ... ");
-			ois = new ObjectInputStream(connectionSocket.getInputStream());
-			oos = new ObjectOutputStream(connectionSocket.getOutputStream());
 			clientIP = (connectionSocket.getInetAddress()).getHostAddress();
 			clientPort = connectionSocket.getPort();
+			System.out.println("Connected to " + clientIP + " at port " + clientPort);
+			ois = new ObjectInputStream(connectionSocket.getInputStream());
+			oos = new ObjectOutputStream(connectionSocket.getOutputStream());
 
 			incomingMessage = (TrackerMessage)ois.readObject();
 			outgoingMessage = processMessage(incomingMessage, clientIP, clientPort);
