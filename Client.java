@@ -121,17 +121,19 @@ public class Client {
 	}
 
 	private static int getDesiredChunkID(BitSet others) {
-		int chunkID = (int)Math.random() * inprogress.length();
-		while (true) {
-			try {
+		try {
+			int start = inprogress.nextClearBit(0);
+			int end = inprogress.previousClearBit(inprogress.length() - 1);
+			int chunkID = (int)Math.random() * (end - start) + start;
+			while (true) {
 				chunkID = inprogress.nextClearBit(chunkID);
-			} catch (IndexOutOfBoundsException e) {
-				return -1;
+				if (others.get(chunkID)) break;
 			}
-			if (others.get(chunkID)) break;
+			inprogress.set(chunkID);
+			return chunkID;
+		} catch (IndexOutOfBoundsException e) {
+			return -1;
 		}
-		inprogress.set(chunkID);
-		return chunkID;
 	}
 
 	private static void start(ArrayList<PeerInfo> list) {
@@ -185,6 +187,7 @@ public class Client {
 		private ObjectOutputStream out;
 		private ObjectInputStream in;
 		private BitSet otherChunkList;
+		private int currentChunkID = -1;
 		//private ArrayList<Integer> desiredChunkList;
 
 		public Peer(Socket socket) throws IOException {
@@ -201,11 +204,11 @@ public class Client {
 				while (true) {
 					msg = receiveMsg();
 					if (msg.getType() == ClientMessage.MODE.DATA) {
-						writeToFile(msg.getChunkID(), msg.getData());
+						Client.writeToFile(msg.getChunkID(), msg.getData());
 						System.out.println("Received chunk " + msg.getChunkID() + " from " + socket.getInetAddress().getHostAddress());
 						otherChunkList = msg.getChunkList();
-						int desiredChunkID = getDesiredChunkID(otherChunkList);
-						sendChunkRequest(desiredChunkID);
+						currentChunkID = getDesiredChunkID(otherChunkList);
+						sendChunkRequest(currentChunkID);
 					} else if (msg.getType() == ClientMessage.MODE.REQUEST) {
 						int chunkRequest = msg.getChunkID();
 						sendChunks(chunkRequest);
@@ -222,6 +225,9 @@ public class Client {
 				}
 			} catch (Exception e) {
 				System.out.println("Peer thread error");
+				if (currentChunkID != -1) {
+					Client.inprogress.clear(currentChunkID);
+				}
 				e.printStackTrace();
 			}
 		}
