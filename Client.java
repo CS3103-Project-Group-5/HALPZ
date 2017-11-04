@@ -205,7 +205,7 @@ public class Client {
 					System.out.println("Received message from " + socket.getInetAddress().getHostAddress());
 					msg = receiveMsg();
 					System.out.println("Message type: " + msg.getType());
-					if (msg.getType() == ClientMessage.MODE.DATA || msg.getType() == ClientMessage.MODE.UPDATE) {
+					if (msg.getType() == ClientMessage.MODE.DATA) {
 						Client.writeToFile(msg.getChunkID(), msg.getData());
 						System.out.println("Received chunk " + msg.getChunkID() + " from " + socket.getInetAddress().getHostAddress());
 						otherChunkList = msg.getChunkList();
@@ -214,8 +214,10 @@ public class Client {
 					} else if (msg.getType() == ClientMessage.MODE.REQUEST) {
 						int chunkRequest = msg.getChunkID();
 						sendChunks(chunkRequest);
-					//} else if (msg.getType() == ClientMessage.MODE.UPDATE) {
-					//	sendChunkRequest(-1);
+					} else if (msg.getType() == ClientMessage.MODE.UPDATE) {
+						otherChunkList = msg.getChunkList();
+						currentChunkID = getDesiredChunkID(otherChunkList);
+						sendChunkRequest(currentChunkID);
 					} else {
 						System.out.println("Unknown message.");
 					}
