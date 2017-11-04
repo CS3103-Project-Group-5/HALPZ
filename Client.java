@@ -86,8 +86,6 @@ public class Client {
 					totalChunkNumber = (int) Math.ceil(fileSize / (double) chunkSize);
 					inprogress = new BitSet(totalChunkNumber);
 					inprogress.flip(0, totalChunkNumber);
-					System.out.println("Length: " + inprogress.size());
-					System.out.println(inprogress.get(0));
 					completed = (BitSet)inprogress.clone();
 					TrackerManager.initializeUpload(fileName, fileSize);
 					start(new ArrayList<PeerInfo>());
@@ -116,7 +114,7 @@ public class Client {
 		try {
 			int start = inprogress.nextClearBit(0);
 			int end = inprogress.previousClearBit(inprogress.length() - 1);
-			int random = (int)Math.random() * (end - start) + start;
+			int random = (int)(Math.random() * (end - start) + start);
 			int chunkID = random;
 			while (true) {
 				if (chunkID >= totalChunkNumber) {
@@ -205,6 +203,7 @@ public class Client {
 
 				ClientMessage msg;
 				while (true) {
+					System.out.println("going");
 					msg = receiveMsg();
 					if (msg.getType() == ClientMessage.MODE.DATA) {
 						writeToFile(msg.getChunkID(), msg.getData());
