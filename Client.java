@@ -82,8 +82,11 @@ public class Client {
 						break;
 					}
 					fileSize = file.length();
-					inprogress = new BitSet((int) Math.ceil(fileSize / (double) chunkSize));
-					inprogress.flip(0, inprogress.length());
+					int chunkNumber = (int) Math.ceil(fileSize / (double) chunkSize);
+					inprogress = new BitSet(chunkNumber);
+					inprogress.flip(0, chunkNumber);
+					System.out.println("Length: " + chunkNumber);
+					System.out.println(inprogress.get(0));
 					completed = (BitSet)inprogress.clone();
 					TrackerManager.initializeUpload(fileName, fileSize);
 					start(new ArrayList<PeerInfo>());
@@ -121,11 +124,23 @@ public class Client {
 	}
 
 	private static int getDesiredChunkID(BitSet others) {
+		boolean firstLoop = true;
 		try {
 			int start = inprogress.nextClearBit(0);
 			int end = inprogress.previousClearBit(inprogress.length() - 1);
-			int chunkID = (int)Math.random() * (end - start) + start;
+			int random = (int)Math.random() * (end - start) + start;
+			int chunkID = random;
 			while (true) {
+				if (chunkID > inprogress.size()) {
+					if (firstLoop) {
+						chunkID = start;
+						firstLoop = false;
+					} else {
+						return -1;
+					}
+				}
+				if (!firstLoop && chunkID >= random) return -1;
+				System.out.println("ChunkID: " + chunkID);
 				chunkID = inprogress.nextClearBit(chunkID);
 				if (others.get(chunkID)) break;
 			}
@@ -217,6 +232,7 @@ public class Client {
 					} else if (msg.getType() == ClientMessage.MODE.UPDATE) {
 						otherChunkList = msg.getChunkList();
 						currentChunkID = getDesiredChunkID(otherChunkList);
+						System.out.println("Preparing to sent chunk request " + currentChunkID);
 						sendChunkRequest(currentChunkID);
 						System.out.println("Sent chunk request " + currentChunkID);
 					} else {
