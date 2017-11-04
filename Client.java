@@ -8,7 +8,6 @@ public class Client {
 
     private static BitSet inprogress;
 	private static BitSet completed;
-	private static RandomAccessFile RAFile;
 	private static int chunkSize;
 	private static int peerNumber;
 	private static String fileName;
@@ -112,19 +111,6 @@ public class Client {
 		}
 	}
 
-	private static void writeToFile(int id, byte[] data) throws IOException {
-		RAFile.seek(id*Client.chunkSize);
-		RAFile.write(data);
-		completed.set(id);
-	}
-
-	private static byte[] readFromFile(int id) throws IOException {
-		RAFile.seek(id*chunkSize);
-		byte[] bytes = new byte[chunkSize];
-		RAFile.read(bytes);
-		return bytes;
-	}
-
 	private static int getDesiredChunkID(BitSet others) {
 		boolean firstLoop = true;
 		try {
@@ -154,21 +140,10 @@ public class Client {
 
 	private static void start(ArrayList<PeerInfo> list) {
 		int welcomePort = 8099;
-		File file = new File(fileName);
-
-		try {
-			if (!file.exists()) {
-				file.createNewFile();
-			}
-			RAFile = new RandomAccessFile(file, "rwd");
-		} catch (Exception e) {
-			e.printStackTrace();
-			return;
-		}
 
 		for (PeerInfo info : list) {
 			try {
-				new Thread(new Peer(new Socket(info.getPeerIP(), welcomePort))).start();
+				new Thread(new Peer(fileName, new Socket(info.getPeerIP(), welcomePort))).start();
 			} catch (Exception e) {
 				e.printStackTrace();
 				continue;
@@ -189,7 +164,7 @@ public class Client {
 			try {
 				Socket connectionSocket = welcomeSocket.accept();
 				System.out.println("New peer connected " + connectionSocket.getInetAddress().getHostAddress());
-				new Thread(new Peer(connectionSocket)).start();
+				new Thread(new Peer(fileName, connectionSocket)).start();
 			} catch (Exception e) {
 				e.printStackTrace();
 				continue;
@@ -204,12 +179,23 @@ public class Client {
 		private ObjectInputStream in;
 		private BitSet otherChunkList;
 		private int currentChunkID = -1;
+		private RandomAccessFile RAFile;
 		//private ArrayList<Integer> desiredChunkList;
 
-		public Peer(Socket socket) throws IOException {
+		public Peer(String fileName, Socket socket) throws IOException {
 			this.socket = socket;
 			out = new ObjectOutputStream(socket.getOutputStream());
 			in = new ObjectInputStream(socket.getInputStream());
+
+			File file = new File(fileName);
+			try {
+				if (!file.exists()) {
+					file.createNewFile();
+				}
+				RAFile = new RandomAccessFile(file, "rwd");
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
 
 		public void run() {
@@ -221,7 +207,7 @@ public class Client {
 					msg = receiveMsg();
 					System.out.println("Received " + msg.getType() + " message from " + socket.getInetAddress().getHostAddress());
 					if (msg.getType() == ClientMessage.MODE.DATA) {
-						Client.writeToFile(msg.getChunkID(), msg.getData());
+						writeToFile(msg.getChunkID(), msg.getData());
 						System.out.println("Received chunk " + msg.getChunkID() + " from " + socket.getInetAddress().getHostAddress());
 						otherChunkList = msg.getChunkList();
 						currentChunkID = getDesiredChunkID(otherChunkList);
@@ -269,7 +255,7 @@ public class Client {
 		}
 
 		private void sendChunks(int id) throws IOException {
-			byte[] data = Client.readFromFile(id);
+			byte[] data = readFromFile(id);
 			out.writeObject(new ClientMessage(id, data, Client.completed));
 			System.out.println("Sent chunk " + id + " to " + socket.getInetAddress().getHostAddress());
 		}
@@ -278,12 +264,23 @@ public class Client {
 			return Client.getDesiredChunkID(others);
 		}
 
-		private void readFromFile() {
-		}
-
 		private int getChunkOffset(int number) {
 			return 0;
 		}
+
+		private void writeToFile(int id, byte[] data) throws IOException {
+			RAFile.seek(id*Client.chunkSize);
+			RAFile.write(data);
+			completed.set(id);
+		}
+
+		private byte[] readFromFile(int id) throws IOException {
+			RAFile.seek(id*chunkSize);
+			byte[] bytes = new byte[chunkSize];
+			RAFile.read(bytes);
+			return bytes;
+		}
+
 	}
 }
 
