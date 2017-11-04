@@ -22,3 +22,8 @@
 hs_err_pid*
 *.xml
 
+# images
+*.jpg
+*.jpeg
+*.png
+*.svg

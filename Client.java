@@ -191,7 +191,7 @@ public class Client {
 		//private ArrayList<Integer> desiredChunkList;
 
 		public Peer(Socket socket) throws IOException {
-			socket = socket;
+			this.socket = socket;
 			out = new ObjectOutputStream(socket.getOutputStream());
 			in = new ObjectInputStream(socket.getInputStream());
 		}
@@ -202,8 +202,10 @@ public class Client {
 
 				ClientMessage msg;
 				while (true) {
+					System.out.println("Received message from " + socket.getInetAddress().getHostAddress());
 					msg = receiveMsg();
-					if (msg.getType() == ClientMessage.MODE.DATA) {
+					System.out.println("Message type: " + msg.getType());
+					if (msg.getType() == ClientMessage.MODE.DATA || msg.getType() == ClientMessage.MODE.UPDATE) {
 						Client.writeToFile(msg.getChunkID(), msg.getData());
 						System.out.println("Received chunk " + msg.getChunkID() + " from " + socket.getInetAddress().getHostAddress());
 						otherChunkList = msg.getChunkList();
@@ -212,8 +214,8 @@ public class Client {
 					} else if (msg.getType() == ClientMessage.MODE.REQUEST) {
 						int chunkRequest = msg.getChunkID();
 						sendChunks(chunkRequest);
-					} else if (msg.getType() == ClientMessage.MODE.UPDATE) {
-						sendChunkRequest(-1);
+					//} else if (msg.getType() == ClientMessage.MODE.UPDATE) {
+					//	sendChunkRequest(-1);
 					} else {
 						System.out.println("Unknown message.");
 					}
