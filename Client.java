@@ -70,7 +70,7 @@ public class Client {
 					peerNumber = peerList.size();
 					inprogress = new BitSet((int) Math.ceil(fileSize / (double) chunkSize)); // <-- need to load file
 					completed = (BitSet)inprogress.clone();
-					/* call peer class to do the p2p */
+					start(peerList);
 					break;
 
 				case 4:
@@ -86,6 +86,7 @@ public class Client {
 					inprogress.flip(0, inprogress.length());
 					completed = (BitSet)inprogress.clone();
 					TrackerManager.initializeUpload(fileName, fileSize);
+					start(new ArrayList<PeerInfo>());
 					break;
 
 			}
@@ -120,21 +121,23 @@ public class Client {
 	}
 
 	private static int getDesiredChunkID(BitSet others) {
-		int chunkID = (int)Math.random() * inprogress.length();
-		while (true) {
-			try {
+		try {
+			int start = inprogress.nextClearBit(0);
+			int end = inprogress.previousClearBit(inprogress.length() - 1);
+			int chunkID = (int)Math.random() * (end - start) + start;
+			while (true) {
 				chunkID = inprogress.nextClearBit(chunkID);
-			} catch (IndexOutOfBoundsException e) {
-				return -1;
+				if (others.get(chunkID)) break;
 			}
-			if (others.get(chunkID)) break;
+			inprogress.set(chunkID);
+			return chunkID;
+		} catch (IndexOutOfBoundsException e) {
+			return -1;
 		}
-		inprogress.set(chunkID);
-		return chunkID;
 	}
 
 	private static void start(ArrayList<PeerInfo> list) {
-		int welcomePort = 1235;
+		int welcomePort = 8099;
 		File file = new File(fileName);
 
 		try {
@@ -184,6 +187,7 @@ public class Client {
 		private ObjectOutputStream out;
 		private ObjectInputStream in;
 		private BitSet otherChunkList;
+		private int currentChunkID = -1;
 		//private ArrayList<Integer> desiredChunkList;
 
 		public Peer(Socket socket) throws IOException {
@@ -200,13 +204,16 @@ public class Client {
 				while (true) {
 					msg = receiveMsg();
 					if (msg.getType() == ClientMessage.MODE.DATA) {
-						writeToFile(msg.getChunkID(), msg.getData());
+						Client.writeToFile(msg.getChunkID(), msg.getData());
+						System.out.println("Received chunk " + msg.getChunkID() + " from " + socket.getInetAddress().getHostAddress());
 						otherChunkList = msg.getChunkList();
-						int desiredChunkID = getDesiredChunkID(otherChunkList);
-						sendChunkRequest(desiredChunkID);
+						currentChunkID = getDesiredChunkID(otherChunkList);
+						sendChunkRequest(currentChunkID);
 					} else if (msg.getType() == ClientMessage.MODE.REQUEST) {
 						int chunkRequest = msg.getChunkID();
 						sendChunks(chunkRequest);
+					} else if (msg.getType() == ClientMessage.MODE.UPDATE) {
+						sendChunkRequest(-1);
 					} else {
 						System.out.println("Unknown message.");
 					}
@@ -218,6 +225,9 @@ public class Client {
 				}
 			} catch (Exception e) {
 				System.out.println("Peer thread error");
+				if (currentChunkID != -1) {
+					Client.inprogress.clear(currentChunkID);
+				}
 				e.printStackTrace();
 			}
 		}
@@ -238,6 +248,7 @@ public class Client {
 		private void sendChunks(int id) throws IOException {
 			byte[] data = Client.readFromFile(id);
 			out.writeObject(new ClientMessage(data, Client.completed));
+			System.out.println("Sent chunk " + id + " to " + socket.getInetAddress().getHostAddress());
 		}
 
 		private int getDesiredChunkID(BitSet others) {
@@ -255,7 +266,7 @@ public class Client {
 
 class TrackerManager {
 
-	private static final String TRACKER_ADDRESS = "172.25.98.74";
+	private static final String TRACKER_ADDRESS = "172.25.105.230";
 	private static final int TRACKER_PORT = 1234;
 	private Socket socket;
 	private ObjectOutputStream out;
