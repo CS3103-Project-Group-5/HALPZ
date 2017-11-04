@@ -12,6 +12,7 @@ public class Client {
 	private static int chunkSize;
 	private static int peerNumber;
 	private static String fileName;
+	private static int totalChunkNumber;
 
 	public static void main(String[] args) throws Exception {
 
@@ -68,7 +69,8 @@ public class Client {
 					fileSize = msg.getFileSize();
 					peerList = msg.getPeerList();
 					peerNumber = peerList.size();
-					inprogress = new BitSet((int) Math.ceil(fileSize / (double) chunkSize)); // <-- need to load file
+					totalChunkNumber = (int) Math.ceil(fileSize / (double) chunkSize);
+					inprogress = new BitSet(totalChunkNumber); // <-- need to load file
 					completed = (BitSet)inprogress.clone();
 					start(peerList);
 					break;
@@ -82,10 +84,10 @@ public class Client {
 						break;
 					}
 					fileSize = file.length();
-					int chunkNumber = (int) Math.ceil(fileSize / (double) chunkSize);
-					inprogress = new BitSet(chunkNumber);
-					inprogress.flip(0, chunkNumber);
-					System.out.println("Length: " + chunkNumber);
+					totalChunkNumber = (int) Math.ceil(fileSize / (double) chunkSize);
+					inprogress = new BitSet(totalChunkNumber);
+					inprogress.flip(0, totalChunkNumber);
+					System.out.println("Length: " + inprogress.size());
 					System.out.println(inprogress.get(0));
 					completed = (BitSet)inprogress.clone();
 					TrackerManager.initializeUpload(fileName, fileSize);
@@ -131,7 +133,7 @@ public class Client {
 			int random = (int)Math.random() * (end - start) + start;
 			int chunkID = random;
 			while (true) {
-				if (chunkID > inprogress.size()) {
+				if (chunkID >= totalChunkNumber) {
 					if (firstLoop) {
 						chunkID = start;
 						firstLoop = false;
