@@ -180,6 +180,7 @@ public class Client {
 		private BitSet otherChunkList;
 		private int currentChunkID = -1;
 		private RandomAccessFile RAFile;
+
 		//private ArrayList<Integer> desiredChunkList;
 
 		public Peer(String fileName, Socket socket) throws IOException {
@@ -276,7 +277,11 @@ public class Client {
 
 		private byte[] readFromFile(int id) throws IOException {
 			RAFile.seek(id*chunkSize);
-			byte[] bytes = new byte[chunkSize];
+			if (id == Client.totalChunkNumber - 1) {
+				byte[] bytes = new byte[RAFile.length() - id*chunkSize];
+			} else {
+				byte[] bytes = new byte[chunkSize];
+			}
 			RAFile.read(bytes);
 			return bytes;
 		}
