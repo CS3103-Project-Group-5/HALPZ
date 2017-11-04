@@ -113,7 +113,7 @@ public class Client {
 		boolean firstLoop = true;
 		try {
 			int start = inprogress.nextClearBit(0);
-			int end = inprogress.previousClearBit(inprogress.length() - 1);
+			int end = inprogress.previousClearBit(inprogress.size() - 1);
 			int random = (int)(Math.random() * (end - start) + start);
 			int chunkID = random;
 			while (true) {
@@ -231,8 +231,9 @@ public class Client {
 						break;
 					}
 				}
+				System.out.println("Connection closed.");
 			} catch (Exception e) {
-				System.out.println("Peer thread error");
+				System.out.println("Connection closed.");
 				if (currentChunkID != -1) {
 					Client.inprogress.clear(currentChunkID);
 				}
