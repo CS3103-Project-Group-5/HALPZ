@@ -142,7 +142,6 @@ public class Client {
 					}
 				}
 				if (!firstLoop && chunkID >= random) return -1;
-				System.out.println("ChunkID: " + chunkID);
 				chunkID = inprogress.nextClearBit(chunkID);
 				if (others.get(chunkID)) break;
 			}
@@ -227,10 +226,11 @@ public class Client {
 						otherChunkList = msg.getChunkList();
 						currentChunkID = getDesiredChunkID(otherChunkList);
 						sendChunkRequest(currentChunkID);
-						System.out.println("Sent chunk " + currentChunkID);
+						System.out.println("Sent chunk request " + currentChunkID);
 					} else if (msg.getType() == ClientMessage.MODE.REQUEST) {
 						int chunkRequest = msg.getChunkID();
 						sendChunks(chunkRequest);
+						System.out.println("Sent chunk " + currentChunkID);
 					} else if (msg.getType() == ClientMessage.MODE.UPDATE) {
 						otherChunkList = msg.getChunkList();
 						currentChunkID = getDesiredChunkID(otherChunkList);
@@ -270,7 +270,7 @@ public class Client {
 
 		private void sendChunks(int id) throws IOException {
 			byte[] data = Client.readFromFile(id);
-			out.writeObject(new ClientMessage(data, Client.completed));
+			out.writeObject(new ClientMessage(id, data, Client.completed));
 			System.out.println("Sent chunk " + id + " to " + socket.getInetAddress().getHostAddress());
 		}
 
@@ -366,7 +366,8 @@ class ClientMessage implements Serializable {
     private byte[] data = new byte[256*1024];
     private BitSet chunkList;
 
-    public ClientMessage(byte[] data, BitSet chunkList) {
+    public ClientMessage(int chunkID, byte[] data, BitSet chunkList) {
+		this.chunkID = chunkID;
         this.type = MODE.DATA;
         this.data = data;
         this.chunkList = chunkList;
