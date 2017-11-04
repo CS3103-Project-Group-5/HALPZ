@@ -276,11 +276,12 @@ public class Client {
 		}
 
 		private byte[] readFromFile(int id) throws IOException {
+			byte[] bytes;
 			RAFile.seek(id*chunkSize);
 			if (id == Client.totalChunkNumber - 1) {
-				byte[] bytes = new byte[RAFile.length() - id*chunkSize];
+				bytes = new byte[(int)(RAFile.length() - (long)id*chunkSize)];
 			} else {
-				byte[] bytes = new byte[chunkSize];
+				bytes = new byte[chunkSize];
 			}
 			RAFile.read(bytes);
 			return bytes;
