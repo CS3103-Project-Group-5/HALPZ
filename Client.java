@@ -3,6 +3,7 @@ import java.net.InetAddress;
 import java.util.*;
 import java.io.*;
 import java.net.*;
+import java.nio.ByteBuffer;
 
 public class Client {
 
@@ -13,7 +14,7 @@ public class Client {
 	private static String fileName;
 	private static int totalChunkNumber;
 
-	public static void main(String[] args) throws Exception {
+	public static void main(String[] args) throws Exception, IOException {
 
 		Scanner scanner = new Scanner(System.in);
 
@@ -136,40 +137,167 @@ public class Client {
 		}
 	}
 
-	private static void start(ArrayList<PeerInfo> list) {
-		int welcomePort = 8099;
+	private static void start(ArrayList<PeerInfo> list) throws IOException {
+		int port = 8099;
+		DatagramSocket clientSocket = new DatagramSocket(port);
 
 		for (PeerInfo info : list) {
 			try {
-				new Thread(new Peer(fileName, new Socket(info.getPeerIP(), welcomePort))).start();
+				new Thread(new InitialPacketProcessor(-1, clientSocket, info.getPeerIP(), info.getPeerPort())).start();
 			} catch (Exception e) {
 				e.printStackTrace();
 				continue;
 			}
 		}
 
-		ServerSocket welcomeSocket;
-		try {
-			welcomeSocket = new ServerSocket(welcomePort);
-			peerNumber++;
-		} catch (Exception e) {
-			System.out.println("Welcome port in use.");
-			e.printStackTrace();
-			return;
-		} 
-
 		while (true) {
-			try {
-				Socket connectionSocket = welcomeSocket.accept();
-				System.out.println("New peer connected " + connectionSocket.getInetAddress().getHostAddress());
-				new Thread(new Peer(fileName, connectionSocket)).start();
-			} catch (Exception e) {
-				e.printStackTrace();
-				continue;
-			}
+			byte[] buffer = new byte[4+4+chunkSize+(totalChunkNumber+7)/8];
+			DatagramPacket receivedPacket = new DatagramPacket(buffer, buffer.length);
+			clientSocket.receive(receivedPacket);
+			new Thread(new PacketProcessor(clientSocket, receivedPacket));			
 		}
 	}
 
+	private static void sendChunkRequest(int desiredChunkNum, DatagramSocket clientSocket, InetAddress peerIP, int peerPort) throws IOException {
+	ByteBuffer bb = ByteBuffer.allocate(4+4+chunkSize+(totalChunkNumber+7)/8);
+	if (desiredChunkNum == -1) {
+		bb.putInt(0); //0 for update, 1 for request, 2 for data
+		bb.putInt(-1);
+	} else {
+		bb.putInt(1);
+		bb.putInt(desiredChunkNum);
+	}
+	bb.put(new byte[chunkSize]);
+	bb.put(completed.toByteArray());
+	clientSocket.send(new DatagramPacket(bb.array(), bb.array().length, peerIP, peerPort));
+	bb.clear();
+	}
+
+	private static void sendChunkData(int chunkID, DatagramSocket clientSocket, InetAddress peerIP, int peerPort) throws IOException{
+		byte[] data = readFromFile(chunkID);
+		ByteBuffer bb = ByteBuffer.allocate(4+4+chunkSize+(totalChunkNumber+7)/8);
+		bb.putInt(2);
+		bb.putInt(chunkID);
+		bb.put(data);
+		bb.put(completed.toByteArray());
+		clientSocket.send(new DatagramPacket(bb.array(), bb.array().length, peerIP, peerPort));
+		bb.clear();
+	}
+
+	private static void writeToFile(int id, byte[] data) throws IOException {
+		File file = new File(fileName);
+		RandomAccessFile RAFile;
+		byte[] bytes;	
+		try {
+			if (!file.exists()) {
+				file.createNewFile();
+			}
+			RAFile = new RandomAccessFile(file, "rwd");
+			RAFile.seek(id*Client.chunkSize);
+			RAFile.write(data);
+			completed.set(id);
+			RAFile.close();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}	
+	}
+
+	private static byte[] readFromFile(int id) throws IOException {
+		File file = new File(fileName);
+		RandomAccessFile RAFile;
+		byte[] bytes;	
+		try {
+			if (!file.exists()) {
+				file.createNewFile();
+			}
+			RAFile = new RandomAccessFile(file, "rwd");
+			RAFile.seek(id*chunkSize);
+			if (id == Client.totalChunkNumber - 1) {
+				bytes = new byte[(int)(RAFile.length() - (long)id*chunkSize)];
+			} else {
+				bytes = new byte[chunkSize];
+			}
+			RAFile.read(bytes);
+			RAFile.close();
+			return bytes;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	static class InitialPacketProcessor implements Runnable {
+		private int desiredChunkNum;
+		private DatagramSocket clientSocket;
+		private InetAddress peerIP;
+		private int peerPort;
+
+		public InitialPacketProcessor(int desiredChunkNum, DatagramSocket clientSocket, String peerIP, int peerPort) throws IOException {
+			this.desiredChunkNum = desiredChunkNum;
+			this.clientSocket = clientSocket;
+			this.peerIP = InetAddress.getByName(peerIP);
+			this.peerPort = peerPort;
+		}
+
+		public void run() {
+			try {
+			Client.sendChunkRequest(desiredChunkNum, clientSocket, peerIP, peerPort);
+			} catch (IOException error) {
+				error.printStackTrace();
+			} 
+		}
+	}
+
+	static class PacketProcessor implements Runnable {
+		private DatagramSocket socket;
+		private DatagramPacket receivedPacket;
+		private BitSet otherChunkList;
+		private int requestedChunkID = -1; //current requested 
+		private RandomAccessFile RAFile;
+
+		public PacketProcessor(DatagramSocket clientSocket, DatagramPacket receivedPacket) throws IOException {
+			this.socket = clientSocket;
+			this.receivedPacket = receivedPacket;
+		}
+
+		public void run(){
+			InetAddress peerIP = receivedPacket.getAddress();
+			int peerPort = receivedPacket.getPort();
+			byte[] buffer = receivedPacket.getData();
+			ByteBuffer bb = ByteBuffer.wrap(buffer);
+			int type = bb.getInt();
+			int chunkID = bb.getInt();
+
+			try {
+				if (type == 0) { //type : update
+					otherChunkList = BitSet.valueOf(bb.get(new byte[(totalChunkNumber+7)/8]));	
+					if (Client.completed.nextClearBit(0) >= Client.totalChunkNumber && otherChunkList.nextClearBit(0) >= Client.totalChunkNumber) {
+						return; //break out of the while loop since both sides have full copies of the file
+					}
+					requestedChunkID = Client.getDesiredChunkID(otherChunkList);
+					Client.sendChunkRequest(requestedChunkID, socket, peerIP, peerPort);					
+				} else if (type == 1) { //type : request
+					Client.sendChunkData(chunkID, socket, peerIP, peerPort);
+				} else if (type == 2) { //type : data
+					byte[] data = bb.get(new byte[chunkSize]).array();
+					Client.writeToFile(chunkID, data);
+					System.out.print("Received chunk " + chunkID + " from " + peerIP);
+					otherChunkList = BitSet.valueOf(bb.get(new byte[(totalChunkNumber+7)/8]));
+					requestedChunkID = Client.getDesiredChunkID(otherChunkList);
+					Client.sendChunkRequest(requestedChunkID, socket, peerIP, peerPort);
+				} else {
+					System.out.println("Unknown message.");
+				} 
+			} catch (IOException error) {
+				error.printStackTrace();
+			}
+
+		}
+
+	}
+}
+
+/*
 //To access the bitset from the main class, use Client.chunkList to access.
 	static class Peer implements Runnable {
 		private Socket socket;
@@ -288,6 +416,7 @@ public class Client {
 
 	}
 }
+*/
 
 class TrackerManager {
 
