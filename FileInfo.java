@@ -5,7 +5,7 @@ public class FileInfo implements Serializable {
 	private ArrayList<Long> peerIDList = new ArrayList<Long>();
 	private int totalChunkNumber;
 	private long fileSize;
-	private final double CHUNK_SIZE = 256; 
+	private final double CHUNK_SIZE = 32; 
 	
 	public FileInfo (long seederPeerID, long fileSize) {
 		this.peerIDList.add(seederPeerID);

@@ -35,6 +35,7 @@ class Tracker {
 	private static TrackerMessage processMessage(TrackerMessage incomingMessage, String peerIP, int peerPort) {
 		TrackerMessage.MODE cmd = incomingMessage.getCmd();
 		long peerID = incomingMessage.getPeerID();
+		int clientUDPPort;
 		TrackerMessage outgoingMessage = new TrackerMessage();
 		String requestedFile;
 
@@ -52,18 +53,20 @@ class Tracker {
 
 			case DOWNLOAD:
 				requestedFile = incomingMessage.getFileName();
+				clientUDPPort = incomingMessage.getPeerPort();
 				ArrayList<PeerInfo> peerListToSend = getPeerInfoListToSend(requestedFile);
 				long requestedFileSize = getFileSize(requestedFile);
 				outgoingMessage.setPeerList(peerListToSend);
 				outgoingMessage.setFileSize(requestedFileSize);
-				createNewPeerRecord(peerID, new PeerInfo(peerID, peerIP, peerPort, requestedFile));
+				createNewPeerRecord(peerID, new PeerInfo(peerID, peerIP, clientUDPPort, requestedFile));
 				associatePeerWithFile(peerID, requestedFile);
 				break;
 
 			case UPLOAD: //no need to input any fields in the return message --> send an empty TrackerMessage object as ACK.
 				String newFileName = incomingMessage.getFileName();
+				clientUDPPort = incomingMessage.getPeerPort();
 				long newFileSize = incomingMessage.getFileSize();
-				createNewPeerRecord(peerID, new PeerInfo(peerID, peerIP, peerPort, newFileName));
+				createNewPeerRecord(peerID, new PeerInfo(peerID, peerIP, clientUDPPort, newFileName));
 				createNewFileRecord(newFileName, new FileInfo(peerID, newFileSize));
 				break;
 		}

@@ -9,6 +9,7 @@ public class TrackerMessage implements Serializable {
 
 	private MODE cmd; //0 - getFileList; 1 - download; 2 - upload
 	private long peerID;
+	private int peerPort;
 	private String fileName;
 	private long fileSize;
 	private ArrayList<PeerInfo> peerList;
@@ -41,6 +42,10 @@ public class TrackerMessage implements Serializable {
 		return this.fileList;
 	}
 
+	public int getPeerPort() {
+		return this.peerPort;
+	}
+
 	public void setCmd(MODE cmd) {
 		this.cmd = cmd;
 	}
@@ -63,6 +68,10 @@ public class TrackerMessage implements Serializable {
 
 	public void setFileList(Set<String> list) {
 		this.fileList = list;
+	}
+
+	public void setPeerPort(int peerPort) {
+		this.peerPort = peerPort;
 	}
 
 }
