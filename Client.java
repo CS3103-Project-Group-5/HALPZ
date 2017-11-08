@@ -13,7 +13,7 @@ public class Client {
 	private static int peerNumber;
 	private static String fileName;
 	private static int totalChunkNumber;
-	private static int port = 4203;
+	private static int port = 4100;
 
 	public static void main(String[] args) throws Exception, IOException {
 
@@ -153,7 +153,7 @@ public class Client {
 
 		while (true) {
 			System.out.println("Start loop");
-			byte[] buffer = new byte[4+4+chunkSize+(totalChunkNumber+7)/8];
+			byte[] buffer = new byte[4+4+4+chunkSize+(totalChunkNumber+7)/8];
 			DatagramPacket receivedPacket = new DatagramPacket(buffer, buffer.length);
 			clientSocket.receive(receivedPacket);
 			new Thread(new PacketProcessor(clientSocket, receivedPacket)).start();			
@@ -161,8 +161,7 @@ public class Client {
 	}
 
 	private static void sendChunkRequest(int desiredChunkNum, DatagramSocket clientSocket, InetAddress peerIP, int peerPort) throws IOException {
-	ByteBuffer bb = ByteBuffer.allocate(4+4+chunkSize+(totalChunkNumber+7)/8);
-	System.out.println(4+4+chunkSize+(totalChunkNumber+7)/8);
+	ByteBuffer bb = ByteBuffer.allocate(4+4+4+chunkSize+(totalChunkNumber+7)/8); //type, chunkID, sizeOfData, data(byte array), BitSet
 	if (desiredChunkNum == -1) {
 		bb.putInt(0); //0 for update, 1 for request, 2 for data
 		bb.putInt(-1);
@@ -170,18 +169,19 @@ public class Client {
 		bb.putInt(1);
 		bb.putInt(desiredChunkNum);
 	}
+	bb.putInt(chunkSize);
 	bb.put(new byte[chunkSize]);
 	bb.put(completed.toByteArray());
-	System.out.println(bb.array().length);
 	clientSocket.send(new DatagramPacket(bb.array(), bb.array().length, peerIP, peerPort));
 	bb.clear();
 	}
 
 	private static void sendChunkData(int chunkID, DatagramSocket clientSocket, InetAddress peerIP, int peerPort) throws IOException{
 		byte[] data = readFromFile(chunkID);
-		ByteBuffer bb = ByteBuffer.allocate(4+4+chunkSize+(totalChunkNumber+7)/8);
-		bb.putInt(2);
+		ByteBuffer bb = ByteBuffer.allocate(4+4+4+data.length+(totalChunkNumber+7)/8); //type, chunkID, sizeOfData, data(byte array), BitSet
+ 		bb.putInt(2);
 		bb.putInt(chunkID);
+		bb.putInt(data.length);
 		bb.put(data);
 		bb.put(completed.toByteArray());
 		clientSocket.send(new DatagramPacket(bb.array(), bb.array().length, peerIP, peerPort));
@@ -271,8 +271,10 @@ public class Client {
 			ByteBuffer bb = ByteBuffer.wrap(buffer);
 			int type = bb.getInt();
 			int chunkID = bb.getInt();
-			byte[] data = new byte[chunkSize];
+			int sizeOfData = bb.getInt();
+			byte[] data = new byte[sizeOfData];
 			bb.get(data);
+			System.out.println(sizeOfData);
 			byte[] rawChunkList = new byte[(totalChunkNumber+7)/8];
 			bb.get(rawChunkList);
 			otherChunkList = BitSet.valueOf(rawChunkList);
