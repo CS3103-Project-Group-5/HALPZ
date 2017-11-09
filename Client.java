@@ -14,11 +14,11 @@ public class Client {
 	private static String fileName;
 	private static int totalChunkNumber;
 	private static int port = 4100;
-	private static DatagramSocket clientSocket = new DatagramSocket(port);
+	private static DatagramSocket clientSocket;
 
 	public static void main(String[] args) throws Exception, IOException {
-
 		port = Integer.parseInt(args[0]);
+		clientSocket = new DatagramSocket(port);
 
 		Scanner scanner = new Scanner(System.in);
 
