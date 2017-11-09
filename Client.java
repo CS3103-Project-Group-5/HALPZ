@@ -14,6 +14,7 @@ public class Client {
 	private static String fileName;
 	private static int totalChunkNumber;
 	private static int port = 4100;
+	private static DatagramSocket clientSocket = new DatagramSocket(port);
 
 	public static void main(String[] args) throws Exception, IOException {
 
@@ -118,6 +119,7 @@ public class Client {
 		try {
 			int start = inprogress.nextClearBit(0);
 			int end = inprogress.previousClearBit(totalChunkNumber - 1);
+			if (end < start) return -1;
 			int random = (int)(Math.random() * (end - start) + start);
 			int chunkID = random;
 			while (true) {
@@ -146,7 +148,6 @@ public class Client {
 	}
 
 	private static void start(ArrayList<PeerInfo> list) throws IOException {
-		DatagramSocket clientSocket = new DatagramSocket(port);
 
 		Thread listen = new Thread() {
 			public void run() {
@@ -226,6 +227,12 @@ public class Client {
 
 		listen.start();
 		peer.start();
+		//try {
+		//	listen.join();
+		//	peer.join();
+		//} catch (InterruptedException e) {
+		//	e.printStackTrace();
+		//}
 	}
 
 	private static void sendChunkRequest(int desiredChunkNum, DatagramSocket clientSocket, InetAddress peerIP, int peerPort) throws IOException {
