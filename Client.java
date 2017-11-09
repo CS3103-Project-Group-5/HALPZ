@@ -169,6 +169,7 @@ public class Client {
 					public void run() {
 						try {
 							Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
+							System.out.println("Sent request to peer " + info.getPeerIP());
 							Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
 						} catch (Exception e) {
 							e.printStackTrace();
@@ -218,12 +219,17 @@ public class Client {
 		while (true) {
 			try {
 				clientSocket.receive(receivedPacket);
+				System.out.println("Packet Received");			
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
-			System.out.println("Packet Received");			
 			peerIP = receivedPacket.getAddress();
 			peerPort = receivedPacket.getPort();
+			try {
+				clientSocket.send(new DatagramPacket(new byte[1], 1, peerIP, peerPort));
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 			bufferForPayload = receivedPacket.getData();
 			bb = ByteBuffer.wrap(bufferForPayload);
 			type = bb.getInt();
