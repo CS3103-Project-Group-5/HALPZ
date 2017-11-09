@@ -169,6 +169,7 @@ public class Client {
 							public void run() {
 								try {
 									Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
+									Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
 								} catch (Exception e) {
 									e.printStackTrace();
 								}

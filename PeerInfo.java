@@ -22,6 +22,9 @@ public class PeerInfo implements Serializable {
 	public int getPeerPort(){
 		return this.peerPort;
 	}
+    public void setPeerPort(int peerPort){
+        this.peerPort= peerPort;
+    }
 	public String getFileName(){
 		return this.fileName;
 	}
