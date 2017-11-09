@@ -118,6 +118,7 @@ public class Client {
 		try {
 			int start = inprogress.nextClearBit(0);
 			int end = inprogress.previousClearBit(totalChunkNumber - 1);
+			if (end < start) return -1;
 			int random = (int)(Math.random() * (end - start) + start);
 			int chunkID = random;
 			while (true) {
