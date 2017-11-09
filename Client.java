@@ -130,7 +130,6 @@ public class Client {
 				System.out.println("Start: " + start);
 				System.out.println("End: " + end);
 				System.out.println("Random: " + random);
-				System.out.println("ChunkID: " + chunkID);
 				System.out.println("Firstloop: " + firstLoop);
 				if (chunkID >= totalChunkNumber) {
 					if (firstLoop) {
@@ -141,7 +140,10 @@ public class Client {
 					}
 				}
 				if (!firstLoop && chunkID >= random) return -1;
-				chunkID = inprogress.nextClearBit(chunkID);
+
+				System.out.println("ChunkID: " + chunkID);
+				chunkID = inprogress.nextClearBit(chunkID + 1);
+				System.out.println("New ChunkID: " + chunkID);
 				if (others.get(chunkID)) break;
 			}
 			inprogress.set(chunkID);
@@ -242,7 +244,7 @@ public class Client {
 						return;
 					}
 					requestedChunkID = Client.getDesiredChunkID(otherChunkList);
-					System.out.println(requestedChunkID);
+					System.out.println("Requested chunkID: " + requestedChunkID);
 					Client.sendChunkRequest(requestedChunkID, clientSocket, peerIP, peerPort);					
 					System.out.println("Sent packet");
 				} else if (type == 1) { //type : request
