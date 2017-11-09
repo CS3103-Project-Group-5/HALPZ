@@ -118,7 +118,6 @@ public class Client {
 		try {
 			int start = inprogress.nextClearBit(0);
 			int end = inprogress.previousClearBit(totalChunkNumber - 1);
-			if (end < start) return -1;
 			int random = (int)(Math.random() * (end - start) + start);
 			int chunkID = random;
 			while (true) {
@@ -149,69 +148,84 @@ public class Client {
 	private static void start(ArrayList<PeerInfo> list) throws IOException {
 		DatagramSocket clientSocket = new DatagramSocket(port);
 
-		for (PeerInfo info : list) {
-			try {
-				Client.sendChunkRequest(-1, clientSocket, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
-			} catch (Exception e) {
-				e.printStackTrace();
-				continue;
+		Thread listen = new Thread() {
+			public void run() {
+				byte[] bufferForPacket, bufferForPayload, rawChunkList, data;
+				DatagramPacket receivedPacket;
+				InetAddress peerIP;
+				int type, chunkID, sizeOfData, requestedChunkID, peerPort;
+				BitSet otherChunkList;
+				RandomAccessFile RAFile;
+				ByteBuffer bb;
+				bufferForPacket = new byte[4+4+4+chunkSize+(totalChunkNumber+7)/8];
+				receivedPacket = new DatagramPacket(bufferForPacket, bufferForPacket.length);
+				while (true) {
+					try {
+						clientSocket.receive(receivedPacket);
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+					System.out.println("Packet Received");			
+					peerIP = receivedPacket.getAddress();
+					peerPort = receivedPacket.getPort();
+					bufferForPayload = receivedPacket.getData();
+					bb = ByteBuffer.wrap(bufferForPayload);
+					type = bb.getInt();
+					chunkID = bb.getInt();
+					sizeOfData = bb.getInt();
+					data = new byte[sizeOfData];
+					bb.get(data);
+					System.out.println(sizeOfData);
+					rawChunkList = new byte[(totalChunkNumber+7)/8];
+					bb.get(rawChunkList);
+					otherChunkList = BitSet.valueOf(rawChunkList);
+
+					try {
+						if (type == 0) { //type : update
+							System.out.println("Update Message received");
+							if (completed.nextClearBit(0) >= totalChunkNumber && otherChunkList.nextClearBit(0) >= Client.totalChunkNumber) {
+								System.out.println("Ded");
+								continue;
+							}
+							requestedChunkID = Client.getDesiredChunkID(otherChunkList);
+							System.out.println(requestedChunkID);
+							Client.sendChunkRequest(requestedChunkID, clientSocket, peerIP, peerPort);					
+							System.out.println("Sent packet");
+						} else if (type == 1) { //type : request
+							System.out.println("Request Message received");
+							Client.sendChunkData(chunkID, clientSocket, peerIP, peerPort);
+						} else if (type == 2) { //type : data
+							System.out.print("Data Message received");
+							Client.writeToFile(chunkID, data);
+							System.out.print("Received chunk " + chunkID + " from " + peerIP);
+							requestedChunkID = Client.getDesiredChunkID(otherChunkList);
+							Client.sendChunkRequest(requestedChunkID, clientSocket, peerIP, peerPort);
+						} else {
+							System.out.println("Unknown message.");
+						} 
+					} catch (IOException error) {
+						error.printStackTrace();
+					}		
+					System.out.println("Packet sent");
+				}
 			}
-		}
+		};
 
-		while (true) {
-			byte[] bufferForPacket, bufferForPayload, rawChunkList, data;
-			DatagramPacket receivedPacket;
-			InetAddress peerIP;
-			int type, chunkID, sizeOfData, requestedChunkID, peerPort;
-			BitSet otherChunkList;
-			RandomAccessFile RAFile;
-			ByteBuffer bb;
-
-			bufferForPacket = new byte[4+4+4+chunkSize+(totalChunkNumber+7)/8];
-			receivedPacket = new DatagramPacket(bufferForPacket, bufferForPacket.length);
-			clientSocket.receive(receivedPacket);
-			System.out.println("Packet Received");			
-			peerIP = receivedPacket.getAddress();
-			peerPort = receivedPacket.getPort();
-			bufferForPayload = receivedPacket.getData();
-			bb = ByteBuffer.wrap(bufferForPayload);
-			type = bb.getInt();
-			chunkID = bb.getInt();
-			sizeOfData = bb.getInt();
-			data = new byte[sizeOfData];
-			bb.get(data);
-			System.out.println(sizeOfData);
-			rawChunkList = new byte[(totalChunkNumber+7)/8];
-			bb.get(rawChunkList);
-			otherChunkList = BitSet.valueOf(rawChunkList);
-
-			try {
-				if (type == 0) { //type : update
-					System.out.println("Update Message received");
-					if (completed.nextClearBit(0) >= totalChunkNumber && otherChunkList.nextClearBit(0) >= Client.totalChunkNumber) {
-						System.out.println("Ded");
+		Thread peer = new Thread() {
+			public void run() {
+				for (PeerInfo info : list) {
+					try {
+						Client.sendChunkRequest(-1, clientSocket, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
+					} catch (Exception e) {
+						e.printStackTrace();
 						continue;
 					}
-					requestedChunkID = Client.getDesiredChunkID(otherChunkList);
-					System.out.println(requestedChunkID);
-					Client.sendChunkRequest(requestedChunkID, clientSocket, peerIP, peerPort);					
-					System.out.println("Sent packet");
-				} else if (type == 1) { //type : request
-					System.out.println("Request Message received");
-					Client.sendChunkData(chunkID, clientSocket, peerIP, peerPort);
-				} else if (type == 2) { //type : data
-					System.out.print("Data Message received");
-					Client.writeToFile(chunkID, data);
-					System.out.print("Received chunk " + chunkID + " from " + peerIP);
-					requestedChunkID = Client.getDesiredChunkID(otherChunkList);
-					Client.sendChunkRequest(requestedChunkID, clientSocket, peerIP, peerPort);
-				} else {
-					System.out.println("Unknown message.");
-				} 
-			} catch (IOException error) {
-				error.printStackTrace();
-			}		
-		}
+				}
+			}
+		};
+
+		listen.start();
+		peer.start();
 	}
 
 	private static void sendChunkRequest(int desiredChunkNum, DatagramSocket clientSocket, InetAddress peerIP, int peerPort) throws IOException {
