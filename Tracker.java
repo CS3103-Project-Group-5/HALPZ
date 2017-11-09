@@ -35,6 +35,7 @@ class Tracker {
 	private static TrackerMessage processMessage(TrackerMessage incomingMessage, String peerIP, int peerPort) {
 		TrackerMessage.MODE cmd = incomingMessage.getCmd();
 		long peerID = incomingMessage.getPeerID();
+		System.out.println("PeerID: " + peerID);
 		int clientUDPPort;
 		TrackerMessage outgoingMessage = new TrackerMessage();
 		String requestedFile;

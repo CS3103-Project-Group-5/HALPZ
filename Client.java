@@ -15,9 +15,12 @@ public class Client {
 	private static int totalChunkNumber;
 	private static int port = 4100;
 	private static DatagramSocket clientSocket;
+	private static long myID = 0;
 
 	public static void main(String[] args) throws Exception, IOException {
-		port = Integer.parseInt(args[0]);
+		if (args.length > 0) {
+			port = Integer.parseInt(args[0]);
+		}
 		clientSocket = new DatagramSocket(port);
 
 		Scanner scanner = new Scanner(System.in);
@@ -69,7 +72,8 @@ public class Client {
 				case 3:
 					System.out.println("Please input file name.");
 					fileName = scanner.nextLine();
-					TrackerMessage msg = TrackerManager.getDownloadInfo(fileName, port);
+					TrackerMessage msg = TrackerManager.getDownloadInfo(clientSocket, fileName, port);
+					myID = msg.getPeerID();
 					fileSize = msg.getFileSize();
 					peerList = msg.getPeerList();
 					peerNumber = peerList.size();
@@ -92,7 +96,7 @@ public class Client {
 					inprogress = new BitSet(totalChunkNumber);
 					inprogress.flip(0, totalChunkNumber);
 					completed = (BitSet)inprogress.clone();
-					TrackerManager.initializeUpload(fileName, fileSize, port);
+					myID = TrackerManager.initializeUpload(clientSocket, fileName, fileSize, port);
 					start(new ArrayList<PeerInfo>());
 					break;
 
@@ -147,76 +151,29 @@ public class Client {
 		}
 	}
 
+	
 	private static void start(ArrayList<PeerInfo> list) throws IOException {
-
-		Thread listen = new Thread() {
-			public void run() {
-				byte[] bufferForPacket, bufferForPayload, rawChunkList, data;
-				DatagramPacket receivedPacket;
-				InetAddress peerIP;
-				int type, chunkID, sizeOfData, requestedChunkID, peerPort;
-				BitSet otherChunkList;
-				RandomAccessFile RAFile;
-				ByteBuffer bb;
-				bufferForPacket = new byte[4+4+4+chunkSize+(totalChunkNumber+7)/8];
-				receivedPacket = new DatagramPacket(bufferForPacket, bufferForPacket.length);
-				while (true) {
-					try {
-						clientSocket.receive(receivedPacket);
-					} catch (IOException e) {
-						e.printStackTrace();
-					}
-					System.out.println("Packet Received");			
-					peerIP = receivedPacket.getAddress();
-					peerPort = receivedPacket.getPort();
-					bufferForPayload = receivedPacket.getData();
-					bb = ByteBuffer.wrap(bufferForPayload);
-					type = bb.getInt();
-					chunkID = bb.getInt();
-					sizeOfData = bb.getInt();
-					data = new byte[sizeOfData];
-					bb.get(data);
-					System.out.println(sizeOfData);
-					rawChunkList = new byte[(totalChunkNumber+7)/8];
-					bb.get(rawChunkList);
-					otherChunkList = BitSet.valueOf(rawChunkList);
-
-					try {
-						if (type == 0) { //type : update
-							System.out.println("Update Message received");
-							if (completed.nextClearBit(0) >= totalChunkNumber && otherChunkList.nextClearBit(0) >= Client.totalChunkNumber) {
-								System.out.println("Ded");
-								continue;
-							}
-							requestedChunkID = Client.getDesiredChunkID(otherChunkList);
-							System.out.println(requestedChunkID);
-							Client.sendChunkRequest(requestedChunkID, clientSocket, peerIP, peerPort);					
-							System.out.println("Sent packet");
-						} else if (type == 1) { //type : request
-							System.out.println("Request Message received");
-							Client.sendChunkData(chunkID, clientSocket, peerIP, peerPort);
-						} else if (type == 2) { //type : data
-							System.out.print("Data Message received");
-							Client.writeToFile(chunkID, data);
-							System.out.print("Received chunk " + chunkID + " from " + peerIP);
-							requestedChunkID = Client.getDesiredChunkID(otherChunkList);
-							Client.sendChunkRequest(requestedChunkID, clientSocket, peerIP, peerPort);
-						} else {
-							System.out.println("Unknown message.");
-						} 
-					} catch (IOException error) {
-						error.printStackTrace();
-					}		
-					System.out.println("Packet sent");
-				}
-			}
-		};
-
+		connect(clientSocket);
+		
 		Thread peer = new Thread() {
 			public void run() {
 				for (PeerInfo info : list) {
 					try {
-						Client.sendChunkRequest(-1, clientSocket, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
+						DatagramSocket s = new DatagramSocket();
+						new Thread() {
+							public void run() {
+								process(s);
+							}
+						}.start();
+						new Thread() {
+							public void run() {
+								try {
+									Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
+								} catch (Exception e) {
+									e.printStackTrace();
+								}
+							}
+						}.start();
 					} catch (Exception e) {
 						e.printStackTrace();
 						continue;
@@ -224,9 +181,23 @@ public class Client {
 				}
 			}
 		};
+	}
 
-		listen.start();
-		peer.start();
+	private static void connect(DatagramSocket clientSocket) throws IOException {
+		new Thread() {
+			public void run() {
+				try {
+					DatagramPacket receivedPacket = new DatagramPacket(new byte[1], 1);
+					clientSocket.receive(receivedPacket);
+					DatagramSocket s = new DatagramSocket();
+					TrackerManager.update(myID, s);
+					connect(s);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+				process(clientSocket);
+			}
+		}.start();
 		//try {
 		//	listen.join();
 		//	peer.join();
@@ -235,20 +206,81 @@ public class Client {
 		//}
 	}
 
-	private static void sendChunkRequest(int desiredChunkNum, DatagramSocket clientSocket, InetAddress peerIP, int peerPort) throws IOException {
-	ByteBuffer bb = ByteBuffer.allocate(4+4+4+chunkSize+(totalChunkNumber+7)/8); //type, chunkID, sizeOfData, data(byte array), BitSet
-	if (desiredChunkNum == -1) {
-		bb.putInt(0); //0 for update, 1 for request, 2 for data
-		bb.putInt(-1);
-	} else {
-		bb.putInt(1);
-		bb.putInt(desiredChunkNum);
+	private static void process(DatagramSocket clientSocket) {
+		byte[] bufferForPacket, bufferForPayload, rawChunkList, data;
+		InetAddress peerIP;
+		DatagramPacket receivedPacket;;
+		int type, chunkID, sizeOfData, requestedChunkID, peerPort;
+		BitSet otherChunkList;
+		RandomAccessFile RAFile;
+		ByteBuffer bb;
+		bufferForPacket = new byte[4+4+4+chunkSize+(totalChunkNumber+7)/8];
+		receivedPacket = new DatagramPacket(bufferForPacket, bufferForPacket.length);
+		while (true) {
+			try {
+				clientSocket.receive(receivedPacket);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			System.out.println("Packet Received");			
+			peerIP = receivedPacket.getAddress();
+			peerPort = receivedPacket.getPort();
+			bufferForPayload = receivedPacket.getData();
+			bb = ByteBuffer.wrap(bufferForPayload);
+			type = bb.getInt();
+			chunkID = bb.getInt();
+			sizeOfData = bb.getInt();
+			data = new byte[sizeOfData];
+			bb.get(data);
+			System.out.println(sizeOfData);
+			rawChunkList = new byte[(totalChunkNumber+7)/8];
+			bb.get(rawChunkList);
+			otherChunkList = BitSet.valueOf(rawChunkList);
+
+			try {
+				if (type == 0) { //type : update
+					System.out.println("Update Message received");
+					if (completed.nextClearBit(0) >= totalChunkNumber && otherChunkList.nextClearBit(0) >= totalChunkNumber) {
+						System.out.println("Ded");
+						return;
+					}
+					requestedChunkID = Client.getDesiredChunkID(otherChunkList);
+					System.out.println(requestedChunkID);
+					Client.sendChunkRequest(requestedChunkID, clientSocket, peerIP, peerPort);					
+					System.out.println("Sent packet");
+				} else if (type == 1) { //type : request
+					System.out.println("Request Message received");
+					Client.sendChunkData(chunkID, clientSocket, peerIP, peerPort);
+				} else if (type == 2) { //type : data
+					System.out.print("Data Message received");
+					Client.writeToFile(chunkID, data);
+					System.out.print("Received chunk " + chunkID + " from " + peerIP);
+					requestedChunkID = Client.getDesiredChunkID(otherChunkList);
+					Client.sendChunkRequest(requestedChunkID, clientSocket, peerIP, peerPort);
+				} else {
+					System.out.println("Unknown message.");
+				} 
+			} catch (IOException error) {
+				error.printStackTrace();
+			}		
+			System.out.println("Packet sent");
+		}
 	}
-	bb.putInt(chunkSize);
-	bb.put(new byte[chunkSize]);
-	bb.put(completed.toByteArray());
-	clientSocket.send(new DatagramPacket(bb.array(), bb.array().length, peerIP, peerPort));
-	bb.clear();
+
+	private static void sendChunkRequest(int desiredChunkNum, DatagramSocket clientSocket, InetAddress peerIP, int peerPort) throws IOException {
+		ByteBuffer bb = ByteBuffer.allocate(4+4+4+chunkSize+(totalChunkNumber+7)/8); //type, chunkID, sizeOfData, data(byte array), BitSet
+		if (desiredChunkNum == -1) {
+			bb.putInt(0); //0 for update, 1 for request, 2 for data
+			bb.putInt(-1);
+		} else {
+			bb.putInt(1);
+			bb.putInt(desiredChunkNum);
+		}
+		bb.putInt(chunkSize);
+		bb.put(new byte[chunkSize]);
+		bb.put(completed.toByteArray());
+		clientSocket.send(new DatagramPacket(bb.array(), bb.array().length, peerIP, peerPort));
+		bb.clear();
 	}
 
 	private static void sendChunkData(int chunkID, DatagramSocket clientSocket, InetAddress peerIP, int peerPort) throws IOException{
@@ -513,48 +545,70 @@ class TrackerManager {
 
 	private static final String TRACKER_ADDRESS = "172.25.96.138";
 	private static final int TRACKER_PORT = 1234;
-	private Socket socket;
+	private DatagramSocket socket;
 	private ObjectOutputStream out;
 	private ObjectInputStream in;
+	private ByteArrayOutputStream dataout;
+	private ByteArrayInputStream datain;
 
-	private TrackerManager() throws Exception {
-		socket = new Socket(TRACKER_ADDRESS, TRACKER_PORT);
-		out = new ObjectOutputStream(socket.getOutputStream());
-		in = new ObjectInputStream(socket.getInputStream());
+	private TrackerManager(DatagramSocket socket) throws Exception {
+		socket = socket;
 	}
 
-	private void close() throws Exception {
-		socket.close();
+	private TrackerManager() throws Exception {
+		socket = new DatagramSocket();
 	}
 
 	private void send(TrackerMessage msg) throws Exception {
+		dataout = new ByteArrayOutputStream();
+		out = new ObjectOutputStream(dataout);
 		out.writeObject(msg);
+		out.flush();
+		byte[] sendbuff = dataout.toByteArray();
+		DatagramPacket packet = new DatagramPacket(sendbuff, sendbuff.length, InetAddress.getByName(TRACKER_ADDRESS), TRACKER_PORT);
+		socket.send(packet);
+		out.close();
 	}
 
 	private TrackerMessage receive() throws Exception {
+		byte[] recvBuff = new byte[1024];
+		DatagramPacket packet = new DatagramPacket(recvBuff, recvBuff.length);
+		System.out.println("TrackerMessage Length: " + packet.getLength());
+		socket.receive(packet);
+		datain = new ByteArrayInputStream(recvBuff);
+		in = new ObjectInputStream(datain);
 		TrackerMessage msg = (TrackerMessage)in.readObject();
-		close();
+		in.close();
 		return msg;
 	}
 
-	public static void initializeUpload(String fileName, long fileSize, int port) throws Exception {
-		TrackerManager tracker = new TrackerManager();
+	public static void update(long id, DatagramSocket socket) throws Exception {
+		TrackerManager tracker = new TrackerManager(socket);
+		TrackerMessage msg = new TrackerMessage();
+		msg.setCmd(TrackerMessage.MODE.UPDATE);
+		msg.setPeerID(id);
+		tracker.send(msg);
+		tracker.receive();
+	}
+
+	public static long initializeUpload(DatagramSocket socket, String fileName, long fileSize, int port) throws Exception {
+		TrackerManager tracker = new TrackerManager(socket);
 		TrackerMessage msg = new TrackerMessage();
 		msg.setCmd(TrackerMessage.MODE.UPLOAD);
 		msg.setFileName(fileName);
 		msg.setFileSize(fileSize);
 		msg.setPeerPort(port);
-		tracker.send(msg); //0 - getFileList; 1 - download; 2 - upload
-		tracker.receive();
+		tracker.send(msg);
+		return tracker.receive().getPeerID();
 	}
 
-	public static TrackerMessage getDownloadInfo(String fileName, int port) throws Exception {
-		TrackerManager tracker = new TrackerManager();
+	public static TrackerMessage getDownloadInfo(DatagramSocket socket, String fileName, int port) throws Exception {
+		TrackerManager tracker = new TrackerManager(socket);
 		TrackerMessage msg = new TrackerMessage();
 		msg.setCmd(TrackerMessage.MODE.DOWNLOAD);
 		msg.setFileName(fileName);
 		msg.setPeerPort(port);
-		tracker.send(msg); //0 - getFileList; 1 - download; 2 - upload
+		tracker.send(msg);
 		return tracker.receive();
 	}
 
