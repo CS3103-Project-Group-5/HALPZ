@@ -152,7 +152,6 @@ public class Client {
 			return -1;
 		}
 	}
-
 	
 	private static void start(ArrayList<PeerInfo> list) throws IOException {
 		connect(clientSocket);
@@ -189,6 +188,7 @@ public class Client {
 				try {
 					DatagramPacket receivedPacket = new DatagramPacket(new byte[1], 1);
 					clientSocket.receive(receivedPacket);
+					clientSocket.send(new DatagramPacket(new byte[1], 1, receivedPacket.getAddress(), receivedPacket.getPort()));
 					DatagramSocket s = new DatagramSocket();
 					TrackerManager.update(myID, s);
 					connect(s);
@@ -225,11 +225,6 @@ public class Client {
 			}
 			peerIP = receivedPacket.getAddress();
 			peerPort = receivedPacket.getPort();
-			try {
-				clientSocket.send(new DatagramPacket(new byte[1], 1, peerIP, peerPort));
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
 			bufferForPayload = receivedPacket.getData();
 			bb = ByteBuffer.wrap(bufferForPayload);
 			type = bb.getInt();
