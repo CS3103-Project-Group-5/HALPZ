@@ -155,33 +155,29 @@ public class Client {
 	private static void start(ArrayList<PeerInfo> list) throws IOException {
 		connect(clientSocket);
 		
-		Thread peer = new Thread() {
-			public void run() {
-				for (PeerInfo info : list) {
-					try {
-						DatagramSocket s = new DatagramSocket();
-						new Thread() {
-							public void run() {
-								process(s);
-							}
-						}.start();
-						new Thread() {
-							public void run() {
-								try {
-									Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
-									Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
-								} catch (Exception e) {
-									e.printStackTrace();
-								}
-							}
-						}.start();
-					} catch (Exception e) {
-						e.printStackTrace();
-						continue;
+		for (PeerInfo info : list) {
+			try {
+				DatagramSocket s = new DatagramSocket();
+				new Thread() {
+					public void run() {
+						process(s);
 					}
-				}
+				}.start();
+				new Thread() {
+					public void run() {
+						try {
+							Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
+							Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+					}
+				}.start();
+			} catch (Exception e) {
+				e.printStackTrace();
+				continue;
 			}
-		};
+		}
 	}
 
 	private static void connect(DatagramSocket clientSocket) throws IOException {
@@ -553,7 +549,7 @@ class TrackerManager {
 	private ByteArrayInputStream datain;
 
 	private TrackerManager(DatagramSocket socket) throws Exception {
-		socket = socket;
+		this.socket = socket;
 	}
 
 	private TrackerManager() throws Exception {
