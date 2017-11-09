@@ -17,6 +17,8 @@ public class Client {
 
 	public static void main(String[] args) throws Exception, IOException {
 
+		port = Integer.parseInt(args[0]);
+
 		Scanner scanner = new Scanner(System.in);
 
 		// Wait for a request of user
@@ -115,10 +117,15 @@ public class Client {
 		boolean firstLoop = true;
 		try {
 			int start = inprogress.nextClearBit(0);
-			int end = inprogress.previousClearBit(inprogress.size() - 1);
+			int end = inprogress.previousClearBit(totalChunkNumber - 1);
 			int random = (int)(Math.random() * (end - start) + start);
 			int chunkID = random;
 			while (true) {
+				System.out.println("Start: " + start);
+				System.out.println("End: " + end);
+				System.out.println("Random: " + random);
+				System.out.println("ChunkID: " + chunkID);
+				System.out.println("Firstloop: " + firstLoop);
 				if (chunkID >= totalChunkNumber) {
 					if (firstLoop) {
 						chunkID = start;
@@ -182,7 +189,7 @@ public class Client {
 					System.out.println("Update Message received");
 					if (completed.nextClearBit(0) >= totalChunkNumber && otherChunkList.nextClearBit(0) >= Client.totalChunkNumber) {
 						System.out.println("Ded");
-						return; //break out of the while loop since both sides have full copies of the file
+						continue;
 					}
 					requestedChunkID = Client.getDesiredChunkID(otherChunkList);
 					System.out.println(requestedChunkID);
