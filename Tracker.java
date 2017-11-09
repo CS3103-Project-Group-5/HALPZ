@@ -16,7 +16,7 @@ class Tracker {
         ObjectOutputStream oos;
         ByteArrayInputStream in;
         ByteArrayOutputStream out;
-        byte[] receiveData = new byte[1024];
+        byte[] receiveData = new byte[1024*64];
         
         DatagramSocket serverSocket = new DatagramSocket(port);
         
