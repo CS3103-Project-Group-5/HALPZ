@@ -8,33 +8,48 @@ class Tracker {
 	private static HashMap<String, FileInfo> fileList = new HashMap<String, FileInfo>();
 	private static final int NUM_PEERS_TO_SEND = 10;
 
-	public static void main(String[] args) throws IOException, ClassNotFoundException {
-		int port = 1234, clientPort;
-		String clientIP;
-		byte[] buffer = new byte[256];
-		TrackerMessage incomingMessage, outgoingMessage;
-		ObjectInputStream ois;
-		ObjectOutputStream oos;
+    public static void main(String[] args) throws IOException, ClassNotFoundException {
+        int port = 1234, clientPort;
+        InetAddress clientIP;
+        TrackerMessage incomingMessage, outgoingMessage;
+        ObjectInputStream ois;
+        ObjectOutputStream oos;
+        ByteArrayInputStream in;
+        ByteArrayOutputStream out;
+        byte[] receiveData = new byte[1024];
+        
+        DatagramSocket serverSocket = new DatagramSocket(port);
+        
+        while (true) {
+            DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+            serverSocket.receive(receivePacket);
+            byte[] data = receivePacket.getData();
+            in = new ByteArrayInputStream(data);
+            ois = new ObjectInputStream (in);
+            incomingMessage = (TrackerMessage)ois.readObject();
+            System.out.println("Tracker message received");
+            clientIP = receivePacket.getAddress();
+            clientPort = receivePacket.getPort();
+            System.out.println("Connected to " + clientIP + " at port " + clientPort);
+            
+            outgoingMessage = processMessage(incomingMessage, clientIP.getHostAddress(), clientPort);
+            out = new ByteArrayOutputStream();
+            oos = new ObjectOutputStream(out);
+            oos.writeObject(outgoingMessage);
+            byte[] sendData = out.toByteArray();
+            DatagramPacket sendPacket = new DatagramPacket(sendData,sendData.length,clientIP,clientPort);
+            serverSocket.send(sendPacket);
+            System.out.println("Reply to " + clientIP + " at port " + clientPort);
+        }
+    }
 
-		ServerSocket welcomeSocket = new ServerSocket(port);
-
-		while (true) {
-			Socket connectionSocket = welcomeSocket.accept();
-			clientIP = (connectionSocket.getInetAddress()).getHostAddress();
-			clientPort = connectionSocket.getPort();
-			System.out.println("Connected to " + clientIP + " at port " + clientPort);
-			ois = new ObjectInputStream(connectionSocket.getInputStream());
-			oos = new ObjectOutputStream(connectionSocket.getOutputStream());
-
-			incomingMessage = (TrackerMessage)ois.readObject();
-			outgoingMessage = processMessage(incomingMessage, clientIP, clientPort);
-			oos.writeObject(outgoingMessage);
-		}
-	}
 
 	private static TrackerMessage processMessage(TrackerMessage incomingMessage, String peerIP, int peerPort) {
 		TrackerMessage.MODE cmd = incomingMessage.getCmd();
-		long peerID = incomingMessage.getPeerID();
+        long peerID =incomingMessage.getPeerID();
+        if (peerID == 0){
+            peerID = generateID();
+        }
 		int clientUDPPort;
 		TrackerMessage outgoingMessage = new TrackerMessage();
 		String requestedFile;
@@ -53,25 +68,47 @@ class Tracker {
 
 			case DOWNLOAD:
 				requestedFile = incomingMessage.getFileName();
-				clientUDPPort = incomingMessage.getPeerPort();
+				//clientUDPPort = incomingMessage.getPeerPort();
 				ArrayList<PeerInfo> peerListToSend = getPeerInfoListToSend(requestedFile);
 				long requestedFileSize = getFileSize(requestedFile);
 				outgoingMessage.setPeerList(peerListToSend);
+                outgoingMessage.setPeerID(peerID);
 				outgoingMessage.setFileSize(requestedFileSize);
-				createNewPeerRecord(peerID, new PeerInfo(peerID, peerIP, clientUDPPort, requestedFile));
+				createNewPeerRecord(peerID, new PeerInfo(peerID, peerIP, peerPort, requestedFile));
 				associatePeerWithFile(peerID, requestedFile);
 				break;
 
 			case UPLOAD: //no need to input any fields in the return message --> send an empty TrackerMessage object as ACK.
-				String newFileName = incomingMessage.getFileName();
-				clientUDPPort = incomingMessage.getPeerPort();
-				long newFileSize = incomingMessage.getFileSize();
-				createNewPeerRecord(peerID, new PeerInfo(peerID, peerIP, clientUDPPort, newFileName));
-				createNewFileRecord(newFileName, new FileInfo(peerID, newFileSize));
-				break;
+                String newFileName = incomingMessage.getFileName();
+                //clientUDPPort = incomingMessage.getPeerPort();
+                outgoingMessage.setPeerID(peerID);
+                long newFileSize = incomingMessage.getFileSize();
+                createNewPeerRecord(peerID, new PeerInfo(peerID, peerIP, peerPort, newFileName));
+                createNewFileRecord(newFileName, new FileInfo(peerID, newFileSize));
+                break;
+                
+            case UPDATE:
+                //update peer port
+                clientUDPPort = incomingMessage.getPeerPort();
+                PeerInfo peer = peerMap.get(new Long(peerID));
+                peer.setPeerPort(clientUDPPort);
+
+                break;
+                
+                
 		}
 		return outgoingMessage;
 	}
+    
+    private static long generateID() {
+        Random rnd = new Random(506);
+        long peerID =rnd.nextLong();
+        while (peerMap.containsKey(peerID)){
+            peerID = rnd.nextLong();
+        }
+        
+        return peerID;
+    }
 
 
 	private static void createNewPeerRecord(long peerID, PeerInfo newPeer) {
@@ -118,3 +155,32 @@ class Tracker {
 		return size>NUM_PEERS_TO_SEND;
 	}
 }
+
+/*
+	public static void main(String[] args) throws IOException, ClassNotFoundException {
+ int port = 1234, clientPort;
+ String clientIP;
+ byte[] buffer = new byte[256];
+ TrackerMessage incomingMessage, outgoingMessage;
+ ObjectInputStream ois;
+ ObjectOutputStream oos;
+ byte[] bufferForPacket, bufferForPayload, rawChunkList, data;
+ 
+ ServerSocket welcomeSocket = new ServerSocket(port);
+ 
+ while (true) {
+ Socket connectionSocket = welcomeSocket.accept();
+ clientIP = (connectionSocket.getInetAddress()).getHostAddress();
+ clientPort = connectionSocket.getPort();
+ System.out.println("Connected to " + clientIP + " at port " + clientPort);
+ 
+ 
+ ois = new ObjectInputStream(connectionSocket.getInputStream());
+ oos = new ObjectOutputStream(connectionSocket.getOutputStream());
+ 
+ incomingMessage = (TrackerMessage)ois.readObject();
+ outgoingMessage = processMessage(incomingMessage, clientIP, clientPort);
+ oos.writeObject(outgoingMessage);
+ }
+	}
+ */

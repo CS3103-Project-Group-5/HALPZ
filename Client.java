@@ -217,6 +217,7 @@ public class Client {
 				for (PeerInfo info : list) {
 					try {
 						Client.sendChunkRequest(-1, clientSocket, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
+						Client.sendChunkRequest(-1, clientSocket, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
 					} catch (Exception e) {
 						e.printStackTrace();
 						continue;
