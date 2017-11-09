@@ -142,9 +142,10 @@ public class Client {
 				if (!firstLoop && chunkID >= random) return -1;
 
 				System.out.println("ChunkID: " + chunkID);
-				chunkID = inprogress.nextClearBit(chunkID + 1);
+				chunkID = inprogress.nextClearBit(chunkID);
 				System.out.println("New ChunkID: " + chunkID);
 				if (others.get(chunkID)) break;
+				chunkID++;
 			}
 			inprogress.set(chunkID);
 			return chunkID;
