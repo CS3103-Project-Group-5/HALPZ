@@ -572,7 +572,7 @@ class TrackerManager {
 	}
 
 	private TrackerMessage receive() throws Exception {
-		byte[] recvBuff = new byte[1024];
+		byte[] recvBuff = new byte[1024*32];
 		DatagramPacket packet = new DatagramPacket(recvBuff, recvBuff.length);
 		System.out.println("TrackerMessage Length: " + packet.getLength());
 		socket.receive(packet);
