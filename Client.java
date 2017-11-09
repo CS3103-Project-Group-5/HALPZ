@@ -119,7 +119,6 @@ public class Client {
 			int random = (int)(Math.random() * (end - start) + start);
 			int chunkID = random;
 			while (true) {
-				System.out.println("infinite loop");
 				if (chunkID >= totalChunkNumber) {
 					if (firstLoop) {
 						chunkID = start;
@@ -144,7 +143,7 @@ public class Client {
 
 		for (PeerInfo info : list) {
 			try {
-				new Thread(new InitialPacketProcessor(-1, clientSocket, info.getPeerIP(), info.getPeerPort())).start();
+				Client.sendChunkRequest(-1, clientSocket, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
 			} catch (Exception e) {
 				e.printStackTrace();
 				continue;
@@ -152,11 +151,58 @@ public class Client {
 		}
 
 		while (true) {
-			System.out.println("Start loop");
-			byte[] buffer = new byte[4+4+4+chunkSize+(totalChunkNumber+7)/8];
-			DatagramPacket receivedPacket = new DatagramPacket(buffer, buffer.length);
+			byte[] bufferForPacket, bufferForPayload, rawChunkList, data;
+			DatagramPacket receivedPacket;
+			InetAddress peerIP;
+			int type, chunkID, sizeOfData, requestedChunkID, peerPort;
+			BitSet otherChunkList;
+			RandomAccessFile RAFile;
+			ByteBuffer bb;
+
+			bufferForPacket = new byte[4+4+4+chunkSize+(totalChunkNumber+7)/8];
+			receivedPacket = new DatagramPacket(bufferForPacket, bufferForPacket.length);
 			clientSocket.receive(receivedPacket);
-			new Thread(new PacketProcessor(clientSocket, receivedPacket)).start();			
+			System.out.println("Packet Received");			
+			peerIP = receivedPacket.getAddress();
+			peerPort = receivedPacket.getPort();
+			bufferForPayload = receivedPacket.getData();
+			bb = ByteBuffer.wrap(bufferForPayload);
+			type = bb.getInt();
+			chunkID = bb.getInt();
+			sizeOfData = bb.getInt();
+			data = new byte[sizeOfData];
+			bb.get(data);
+			System.out.println(sizeOfData);
+			rawChunkList = new byte[(totalChunkNumber+7)/8];
+			bb.get(rawChunkList);
+			otherChunkList = BitSet.valueOf(rawChunkList);
+
+			try {
+				if (type == 0) { //type : update
+					System.out.println("Update Message received");
+					if (completed.nextClearBit(0) >= totalChunkNumber && otherChunkList.nextClearBit(0) >= Client.totalChunkNumber) {
+						System.out.println("Ded");
+						return; //break out of the while loop since both sides have full copies of the file
+					}
+					requestedChunkID = Client.getDesiredChunkID(otherChunkList);
+					System.out.println(requestedChunkID);
+					Client.sendChunkRequest(requestedChunkID, clientSocket, peerIP, peerPort);					
+					System.out.println("Sent packet");
+				} else if (type == 1) { //type : request
+					System.out.println("Request Message received");
+					Client.sendChunkData(chunkID, clientSocket, peerIP, peerPort);
+				} else if (type == 2) { //type : data
+					System.out.print("Data Message received");
+					Client.writeToFile(chunkID, data);
+					System.out.print("Received chunk " + chunkID + " from " + peerIP);
+					requestedChunkID = Client.getDesiredChunkID(otherChunkList);
+					Client.sendChunkRequest(requestedChunkID, clientSocket, peerIP, peerPort);
+				} else {
+					System.out.println("Unknown message.");
+				} 
+			} catch (IOException error) {
+				error.printStackTrace();
+			}		
 		}
 	}
 
@@ -229,8 +275,9 @@ public class Client {
 		}
 		return null;
 	}
+}
 
-	static class InitialPacketProcessor implements Runnable {
+/*	static class InitialPacketProcessor implements Runnable {
 		private int desiredChunkNum;
 		private DatagramSocket clientSocket;
 		private InetAddress peerIP;
@@ -310,6 +357,7 @@ public class Client {
 
 	}
 }
+*/
 
 /*
 //To access the bitset from the main class, use Client.chunkList to access.
@@ -434,7 +482,7 @@ public class Client {
 
 class TrackerManager {
 
-	private static final String TRACKER_ADDRESS = "172.25.103.208";
+	private static final String TRACKER_ADDRESS = "172.25.96.138";
 	private static final int TRACKER_PORT = 1234;
 	private Socket socket;
 	private ObjectOutputStream out;
