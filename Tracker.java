@@ -95,11 +95,10 @@ class Tracker {
                 
             case UPDATE:
                 //update peer port
-                clientUDPPort = incomingMessage.getPeerPort();
                 peerPrivateIP = incomingMessage.getPrivateIP();
                 PeerInfo peer = peerMap.get(new Long(peerID));
                 peer.setPeerPrivateIP(peerPrivateIP);
-                peer.setPeerPort(clientUDPPort);
+                peer.setPeerPort(peerPort);
                 peer.setPeerPrivatePort(peerPrivatePort);
 
                 break;
