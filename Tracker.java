@@ -51,7 +51,6 @@ class Tracker {
         if (peerID == 0){
             peerID = generateID();
         }
-		int clientUDPPort;
 		TrackerMessage outgoingMessage = new TrackerMessage();
 		String requestedFile;
 		String peerPrivateIP;
@@ -70,7 +69,6 @@ class Tracker {
 
 			case DOWNLOAD:
 				requestedFile = incomingMessage.getFileName();
-				//clientUDPPort = incomingMessage.getPeerPort();
 				ArrayList<PeerInfo> peerListToSend = getPeerInfoListToSend(requestedFile);
 				long requestedFileSize = getFileSize(requestedFile);
 				peerPrivateIP = incomingMessage.getPrivateIP();
@@ -84,7 +82,6 @@ class Tracker {
 
 			case UPLOAD: //no need to input any fields in the return message --> send an empty TrackerMessage object as ACK.
                 String newFileName = incomingMessage.getFileName();
-                //clientUDPPort = incomingMessage.getPeerPort();
                 outgoingMessage.setPeerID(peerID);
                 outgoingMessage.setPublicIP(peerIP);
                 long newFileSize = incomingMessage.getFileSize();
