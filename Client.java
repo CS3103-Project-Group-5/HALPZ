@@ -174,19 +174,23 @@ public class Client {
 						process(s);
 					}
 				}.start();
-				try {
-					if (info.getPeerIP().equals(publicIP)) { // same NAT
-						System.out.println("Send request to peer " + info.getPeerPrivateIP() + " with port " + info.getPeerPrivatePort());
-						Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerPrivateIP()), info.getPeerPrivatePort());
-						Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerPrivateIP()), info.getPeerPrivatePort());
-					} else {
-						System.out.println("Send request to peer " + info.getPeerIP() + " with port " + info.getPeerPort());
-						Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
-						Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
+				new Thread() {
+					public void run() {
+						try {
+							if (info.getPeerIP().equals(publicIP)) { // same NAT
+								System.out.println("Send request to peer " + info.getPeerPrivateIP() + " with port " + info.getPeerPrivatePort());
+								Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerPrivateIP()), info.getPeerPrivatePort());
+								Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerPrivateIP()), info.getPeerPrivatePort());
+							} else {
+								System.out.println("Send request to peer " + info.getPeerIP() + " with port " + info.getPeerPort());
+								Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
+								Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
+							}
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
 					}
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
+				}.start();
 			} catch (Exception e) {
 				e.printStackTrace();
 				continue;
