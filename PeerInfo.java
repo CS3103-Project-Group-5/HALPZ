@@ -3,19 +3,29 @@ import java.io.*;
 public class PeerInfo implements Serializable {
 	private long peerID;
 	private String peerIP;
+    private String peerPrivateIP;
+    private int peerPrivatePort;
 	private int peerPort;
 	private String fileName;
 	
-	public PeerInfo(long peerID, String peerIP, int peerPort, String fileName){
+	public PeerInfo(long peerID, String peerIP, int peerPort, String peerPrivateIP,int peerPrivatePort, String fileName){
 		this.peerID = peerID;
 		this.peerIP = peerIP;
 		this.peerPort = peerPort;
 		this.fileName = fileName;
+		this.peerPrivatePort = peerPrivatePort;
+        this.peerPrivateIP = peerPrivateIP;
 	}
 	
 	public long getPeerID(){
 		return this.peerID;
 	}
+    public String getPeerPrivateIP(){
+        return this.peerPrivateIP;
+    }
+     public int getPeerPrivatePort(){
+        return this.peerPrivatePort;
+    }
 	public String getPeerIP(){
 		return this.peerIP;
 	}
@@ -28,5 +38,11 @@ public class PeerInfo implements Serializable {
 	public String getFileName(){
 		return this.fileName;
 	}
+    public void setPeerPrivateIP(String peerPrivateIP){
+        this.peerPrivateIP = peerPrivateIP;
+    }
+    public void setPeerPrivatePort(int peerPrivatePort){
+        this.peerPrivatePort = peerPrivatePort;
+    }
 	
 }
