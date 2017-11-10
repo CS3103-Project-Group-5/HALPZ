@@ -16,6 +16,7 @@ public class TrackerMessage implements Serializable {
 	private Set<String> fileList;
 	private int privatePort;
 	private String privateIP;
+	private String publicIP;
 
 	public TrackerMessage() {
 	}
@@ -56,6 +57,10 @@ public class TrackerMessage implements Serializable {
 		return this.privateIP;
 	}
 
+	public String getPublicIP() {
+		return this.publicIP;
+	}
+
 	public void setCmd(MODE cmd) {
 		this.cmd = cmd;
 	}
@@ -90,6 +95,10 @@ public class TrackerMessage implements Serializable {
 
 	public void setPrivateIP(String ip) {
 		this.privateIP = ip;
+	}
+
+	public void setPublicIP(String ip) {
+		this.publicIP = ip;
 	}
 
 }
