@@ -53,6 +53,7 @@ class Tracker {
 		int clientUDPPort;
 		TrackerMessage outgoingMessage = new TrackerMessage();
 		String requestedFile;
+		String peerPrivateIP;
 
 		switch(cmd) {
 			case FILELIST:
@@ -71,10 +72,11 @@ class Tracker {
 				//clientUDPPort = incomingMessage.getPeerPort();
 				ArrayList<PeerInfo> peerListToSend = getPeerInfoListToSend(requestedFile);
 				long requestedFileSize = getFileSize(requestedFile);
+				peerPrivateIP = incomingMessage.getPrivateIP();
 				outgoingMessage.setPeerList(peerListToSend);
                 outgoingMessage.setPeerID(peerID);
 				outgoingMessage.setFileSize(requestedFileSize);
-				createNewPeerRecord(peerID, new PeerInfo(peerID, peerIP, peerPort, requestedFile));
+				createNewPeerRecord(peerID, new PeerInfo(peerID, peerIP, peerPort, peerPrivateIP,requestedFile));
 				associatePeerWithFile(peerID, requestedFile);
 				break;
 
@@ -83,14 +85,17 @@ class Tracker {
                 //clientUDPPort = incomingMessage.getPeerPort();
                 outgoingMessage.setPeerID(peerID);
                 long newFileSize = incomingMessage.getFileSize();
-                createNewPeerRecord(peerID, new PeerInfo(peerID, peerIP, peerPort, newFileName));
+                peerPrivateIP = incomingMessage.getPrivateIP();
+                createNewPeerRecord(peerID, new PeerInfo(peerID, peerIP, peerPort, peerPrivateIP,newFileName));
                 createNewFileRecord(newFileName, new FileInfo(peerID, newFileSize));
                 break;
                 
             case UPDATE:
                 //update peer port
                 clientUDPPort = incomingMessage.getPeerPort();
+                peerPrivateIP = incomingMessage.getPrivateIp();
                 PeerInfo peer = peerMap.get(new Long(peerID));
+                peer.setPeerPrivateIP(peerPrivateIP);
                 peer.setPeerPort(clientUDPPort);
 
                 break;
