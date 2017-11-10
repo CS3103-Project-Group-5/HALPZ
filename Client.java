@@ -13,7 +13,7 @@ public class Client {
 	private static int peerNumber;
 	private static String fileName;
 	private static int totalChunkNumber;
-	private static int port = 4100;
+	private static int port = 56732;
 	private static DatagramSocket clientSocket;
 	private static long myID = 0;
 
@@ -21,7 +21,11 @@ public class Client {
 		if (args.length > 0) {
 			port = Integer.parseInt(args[0]);
 		}
+
 		clientSocket = new DatagramSocket(port);
+		//clientSocket.setReuseAddress(true);
+		//clientSocket.bind(new InetSocketAddress(port));
+		//System.out.println("Local Address: " + clientSocket.getLocalAddress());
 
 		Scanner scanner = new Scanner(System.in);
 
@@ -51,7 +55,7 @@ public class Client {
 			switch (option) {
 				case 1:
 					try {
-						printFileList(TrackerManager.getFileList());
+						printFileList(TrackerManager.getFileList(clientSocket));
 						break;
 					} catch (Exception e) {
 						System.out.println("Tracker error");
@@ -557,7 +561,7 @@ class TrackerManager {
 	}
 
 	private TrackerManager() throws Exception {
-		socket = new DatagramSocket();
+		this.socket = new DatagramSocket();
 	}
 
 	private void send(TrackerMessage msg) throws Exception {
@@ -574,7 +578,6 @@ class TrackerManager {
 	private TrackerMessage receive() throws Exception {
 		byte[] recvBuff = new byte[1024*32];
 		DatagramPacket packet = new DatagramPacket(recvBuff, recvBuff.length);
-		System.out.println("TrackerMessage Length: " + packet.getLength());
 		socket.receive(packet);
 		datain = new ByteArrayInputStream(recvBuff);
 		in = new ObjectInputStream(datain);
@@ -613,8 +616,8 @@ class TrackerManager {
 		return tracker.receive();
 	}
 
-	public static Set<String> getFileList() throws Exception {
-		TrackerManager tracker = new TrackerManager();
+	public static Set<String> getFileList(DatagramSocket socket) throws Exception {
+		TrackerManager tracker = new TrackerManager(socket);
 		TrackerMessage msg = new TrackerMessage();
 		msg.setCmd(TrackerMessage.MODE.FILELIST);
 		tracker.send(msg); //0 - getFileList; 1 - download; 2 - upload
