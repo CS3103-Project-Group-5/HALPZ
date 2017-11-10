@@ -76,6 +76,7 @@ class Tracker {
 				peerPrivateIP = incomingMessage.getPrivateIP();
 				outgoingMessage.setPeerList(peerListToSend);
                 outgoingMessage.setPeerID(peerID);
+                outgoingMessage.setPublicIP(peerIP);
 				outgoingMessage.setFileSize(requestedFileSize);
 				createNewPeerRecord(peerID, new PeerInfo(peerID, peerIP, peerPort, peerPrivateIP,peerPrivatePort,requestedFile));
 				associatePeerWithFile(peerID, requestedFile);
@@ -85,6 +86,7 @@ class Tracker {
                 String newFileName = incomingMessage.getFileName();
                 //clientUDPPort = incomingMessage.getPeerPort();
                 outgoingMessage.setPeerID(peerID);
+                outgoingMessage.setPublicIP(peerIP);
                 long newFileSize = incomingMessage.getFileSize();
                 peerPrivateIP = incomingMessage.getPrivateIP();
                 createNewPeerRecord(peerID, new PeerInfo(peerID, peerIP, peerPort, peerPrivateIP,peerPrivatePort,newFileName));
