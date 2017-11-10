@@ -13,7 +13,7 @@ public class Client {
 	private static int peerNumber;
 	private static String fileName;
 	private static int totalChunkNumber;
-	private static int port = 56732;
+	private static int port = 40000;
 	private static DatagramSocket clientSocket;
 	private static long myID = 0;
 
@@ -169,17 +169,15 @@ public class Client {
 						process(s);
 					}
 				}.start();
-				new Thread() {
-					public void run() {
-						try {
-							Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
-							System.out.println("Sent request to peer " + info.getPeerIP());
-							Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				}.start();
+				try {
+					Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
+					Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
+					Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
+					Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
+					System.out.println("Sent request to peer " + info.getPeerIP() + " with port " + info.getPeerPort());
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
 			} catch (Exception e) {
 				e.printStackTrace();
 				continue;
@@ -193,6 +191,7 @@ public class Client {
 				try {
 					DatagramPacket receivedPacket = new DatagramPacket(new byte[1], 1);
 					clientSocket.receive(receivedPacket);
+					System.out.println("Peer connected from " + receivedPacket.getAddress());
 					clientSocket.send(new DatagramPacket(new byte[1], 1, receivedPacket.getAddress(), receivedPacket.getPort()));
 					DatagramSocket s = new DatagramSocket();
 					TrackerManager.update(myID, s);
@@ -568,7 +567,6 @@ class TrackerManager {
 		dataout = new ByteArrayOutputStream();
 		out = new ObjectOutputStream(dataout);
 		out.writeObject(msg);
-		out.flush();
 		byte[] sendbuff = dataout.toByteArray();
 		DatagramPacket packet = new DatagramPacket(sendbuff, sendbuff.length, InetAddress.getByName(TRACKER_ADDRESS), TRACKER_PORT);
 		socket.send(packet);
