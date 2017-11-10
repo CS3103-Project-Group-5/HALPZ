@@ -172,8 +172,10 @@ public class Client {
 				try {
 					if (info.getPeerIP().equals(local)) {
 						Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerPrivateIP()), info.getPeerPrivatePort());
+						Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerPrivateIP()), info.getPeerPrivatePort());
 						System.out.println("Sent request to peer " + info.getPeerPrivateIP() + " with port " + info.getPeerPrivatePort());
 					} else {
+						Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
 						Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
 						System.out.println("Sent request to peer " + info.getPeerIP() + " with port " + info.getPeerPort());
 					}
