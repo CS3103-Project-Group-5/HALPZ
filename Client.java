@@ -16,16 +16,17 @@ public class Client {
 	private static int port = 40000;
 	private static DatagramSocket clientSocket;
 	private static long myID = 0;
+	private static String local;
 
 	public static void main(String[] args) throws Exception, IOException {
 		if (args.length > 0) {
 			port = Integer.parseInt(args[0]);
 		}
-
+		
+		local = InetAddress.getLocalHost().toString().split("/")[1];
+		System.out.println("My local IP: " + local);
 		clientSocket = new DatagramSocket(port);
-		//clientSocket.setReuseAddress(true);
-		//clientSocket.bind(new InetSocketAddress(port));
-		//System.out.println("Local Address: " + clientSocket.getLocalAddress());
+		System.out.println("My local port: " + clientSocket.getLocalPort());
 
 		Scanner scanner = new Scanner(System.in);
 
@@ -76,7 +77,7 @@ public class Client {
 				case 3:
 					System.out.println("Please input file name.");
 					fileName = scanner.nextLine();
-					TrackerMessage msg = TrackerManager.getDownloadInfo(clientSocket, fileName, port);
+					TrackerMessage msg = TrackerManager.getDownloadInfo(clientSocket, fileName, clientSocket.getLocalPort(), local);
 					myID = msg.getPeerID();
 					fileSize = msg.getFileSize();
 					peerList = msg.getPeerList();
@@ -100,10 +101,9 @@ public class Client {
 					inprogress = new BitSet(totalChunkNumber);
 					inprogress.flip(0, totalChunkNumber);
 					completed = (BitSet)inprogress.clone();
-					myID = TrackerManager.initializeUpload(clientSocket, fileName, fileSize, port);
+					myID = TrackerManager.initializeUpload(clientSocket, fileName, fileSize, clientSocket.getLocalPort(), local);
 					start(new ArrayList<PeerInfo>());
 					break;
-
 			}
 		}
 
@@ -170,11 +170,13 @@ public class Client {
 					}
 				}.start();
 				try {
-					Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
-					Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
-					Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
-					Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
-					System.out.println("Sent request to peer " + info.getPeerIP() + " with port " + info.getPeerPort());
+					if (info.getPeerIP().equals(local)) {
+						Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPrivateIP()), info.getPrivatePort());
+						System.out.println("Sent request to peer " + info.getPrivateIP() + " with port " + info.getPrivatePort());
+					} else {
+						Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
+						System.out.println("Sent request to peer " + info.getPeerIP() + " with port " + info.getPeerPort());
+					}
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
@@ -194,7 +196,7 @@ public class Client {
 					System.out.println("Peer connected from " + receivedPacket.getAddress());
 					clientSocket.send(new DatagramPacket(new byte[1], 1, receivedPacket.getAddress(), receivedPacket.getPort()));
 					DatagramSocket s = new DatagramSocket();
-					TrackerManager.update(myID, s);
+					TrackerManager.update(myID, s, s.getLocalPort(), local);
 					connect(s);
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -584,32 +586,36 @@ class TrackerManager {
 		return msg;
 	}
 
-	public static void update(long id, DatagramSocket socket) throws Exception {
+	public static void update(long id, DatagramSocket socket, int port, String local) throws Exception {
 		TrackerManager tracker = new TrackerManager(socket);
 		TrackerMessage msg = new TrackerMessage();
 		msg.setCmd(TrackerMessage.MODE.UPDATE);
 		msg.setPeerID(id);
+		msg.setPrivatePort(port);
+		msg.setPrivateIP(local);
 		tracker.send(msg);
 		tracker.receive();
 	}
 
-	public static long initializeUpload(DatagramSocket socket, String fileName, long fileSize, int port) throws Exception {
+	public static long initializeUpload(DatagramSocket socket, String fileName, long fileSize, int port, String local) throws Exception {
 		TrackerManager tracker = new TrackerManager(socket);
 		TrackerMessage msg = new TrackerMessage();
 		msg.setCmd(TrackerMessage.MODE.UPLOAD);
 		msg.setFileName(fileName);
 		msg.setFileSize(fileSize);
-		msg.setPeerPort(port);
+		msg.setPrivatePort(port);
+		msg.setPrivateIP(local);
 		tracker.send(msg);
 		return tracker.receive().getPeerID();
 	}
 
-	public static TrackerMessage getDownloadInfo(DatagramSocket socket, String fileName, int port) throws Exception {
+	public static TrackerMessage getDownloadInfo(DatagramSocket socket, String fileName, int port, String local) throws Exception {
 		TrackerManager tracker = new TrackerManager(socket);
 		TrackerMessage msg = new TrackerMessage();
 		msg.setCmd(TrackerMessage.MODE.DOWNLOAD);
 		msg.setFileName(fileName);
-		msg.setPeerPort(port);
+		msg.setPrivatePort(port);
+		msg.setPrivateIP(local);
 		tracker.send(msg);
 		return tracker.receive();
 	}

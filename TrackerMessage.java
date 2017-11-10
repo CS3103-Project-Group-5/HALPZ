@@ -14,6 +14,8 @@ public class TrackerMessage implements Serializable {
 	private long fileSize;
 	private ArrayList<PeerInfo> peerList;
 	private Set<String> fileList;
+	private int privatePort;
+	private String privateIP;
 
 	public TrackerMessage() {
 	}
@@ -46,6 +48,14 @@ public class TrackerMessage implements Serializable {
 		return this.peerPort;
 	}
 
+	public int getPrivatePort() {
+		return this.privatePort;
+	}
+
+	public String getPrivateIP() {
+		return this.privateIP;
+	}
+
 	public void setCmd(MODE cmd) {
 		this.cmd = cmd;
 	}
@@ -72,6 +82,14 @@ public class TrackerMessage implements Serializable {
 
 	public void setPeerPort(int peerPort) {
 		this.peerPort = peerPort;
+	}
+
+	public void setPrivatePort(int port) {
+		this.privatePort = port;
+	}
+
+	public void setPrivateIP(String ip) {
+		this.privateIP = ip;
 	}
 
 }
