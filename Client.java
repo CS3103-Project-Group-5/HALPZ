@@ -171,13 +171,13 @@ public class Client {
 				}.start();
 				try {
 					if (info.getPeerIP().equals(local)) {
+						System.out.println("Send request to peer " + info.getPeerPrivateIP() + " with port " + info.getPeerPrivatePort());
 						Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerPrivateIP()), info.getPeerPrivatePort());
 						Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerPrivateIP()), info.getPeerPrivatePort());
-						System.out.println("Sent request to peer " + info.getPeerPrivateIP() + " with port " + info.getPeerPrivatePort());
 					} else {
+						System.out.println("Send request to peer " + info.getPeerIP() + " with port " + info.getPeerPort());
 						Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
 						Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerIP()), info.getPeerPort());
-						System.out.println("Sent request to peer " + info.getPeerIP() + " with port " + info.getPeerPort());
 					}
 				} catch (Exception e) {
 					e.printStackTrace();
