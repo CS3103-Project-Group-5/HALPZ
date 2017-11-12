@@ -233,6 +233,7 @@ public class Client {
 		ByteBuffer bb;
 		bufferForPacket = new byte[4+4+4+chunkSize+(totalChunkNumber+7)/8];
 		receivedPacket = new DatagramPacket(bufferForPacket, bufferForPacket.length);
+		LinkedList<Integer> queue = new LinkedList<Integer>();
 		while (true) {
 			try {
 				clientSocket.receive(receivedPacket);
@@ -262,7 +263,9 @@ public class Client {
 						return;
 					}
 					requestedChunkID = Client.getDesiredChunkID(otherChunkList);
-					System.out.println("Requested chunkID: " + requestedChunkID);
+					if (requestedChunkID != -1) {
+						queue.offer(requestedChunkID);
+					}
 					Client.sendChunkRequest(requestedChunkID, clientSocket, peerIP, peerPort);					
 					System.out.println("Sent packet");
 				} else if (type == 1) { //type : request
@@ -272,7 +275,14 @@ public class Client {
 					System.out.print("Data Message received");
 					Client.writeToFile(chunkID, data);
 					System.out.print("Received chunk " + chunkID + " from " + peerIP);
+					requestedChunkID = queue.poll();
+					if (requestedChunkID != chunkID) {
+						inprogress.clear(requestedChunkID);
+					}
 					requestedChunkID = Client.getDesiredChunkID(otherChunkList);
+					if (requestedChunkID != -1) {
+						queue.offer(requestedChunkID);
+					}
 					Client.sendChunkRequest(requestedChunkID, clientSocket, peerIP, peerPort);
 				} else {
 					System.out.println("Unknown message.");
