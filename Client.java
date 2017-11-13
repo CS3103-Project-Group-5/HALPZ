@@ -118,9 +118,9 @@ public class Client {
 			}
 
 			clientSocket = new DatagramSocket();
-			closeThread = true;
 		}
-
+		closeThread = true;
+		TrackerManager.exit(myID);
 		scanner.close();
 	}
 
@@ -689,6 +689,15 @@ class TrackerManager {
 		msg.setPeerID(id);
 		msg.setPrivatePort(port);
 		msg.setPrivateIP(local);
+		tracker.send(msg);
+		tracker.receive();
+	}
+
+	public static void exit(long id) throws Exception {
+		TrackerManager tracker = new TrackerManager();
+		TrackerMessage msg = new TrackerMessage();
+		msg.setCmd(TrackerMessage.MODE.EXIT);
+		msg.setPeerID(id);
 		tracker.send(msg);
 		tracker.receive();
 	}
