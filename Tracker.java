@@ -105,8 +105,6 @@ class Tracker {
             		peerMap.remove(peerID);
             	} 
                 break;
-                
-                
 		}
 		return outgoingMessage;
 	}
@@ -166,32 +164,3 @@ class Tracker {
 		return size>NUM_PEERS_TO_SEND;
 	}
 }
-
-/*
-	public static void main(String[] args) throws IOException, ClassNotFoundException {
- int port = 1234, clientPort;
- String clientIP;
- byte[] buffer = new byte[256];
- TrackerMessage incomingMessage, outgoingMessage;
- ObjectInputStream ois;
- ObjectOutputStream oos;
- byte[] bufferForPacket, bufferForPayload, rawChunkList, data;
- 
- ServerSocket welcomeSocket = new ServerSocket(port);
- 
- while (true) {
- Socket connectionSocket = welcomeSocket.accept();
- clientIP = (connectionSocket.getInetAddress()).getHostAddress();
- clientPort = connectionSocket.getPort();
- System.out.println("Connected to " + clientIP + " at port " + clientPort);
- 
- 
- ois = new ObjectInputStream(connectionSocket.getInputStream());
- oos = new ObjectOutputStream(connectionSocket.getOutputStream());
- 
- incomingMessage = (TrackerMessage)ois.readObject();
- outgoingMessage = processMessage(incomingMessage, clientIP, clientPort);
- oos.writeObject(outgoingMessage);
- }
-	}
- */
