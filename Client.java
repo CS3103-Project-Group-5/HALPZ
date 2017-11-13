@@ -156,7 +156,7 @@ public class Client {
 				if (others.get(chunkID)) break;
 				chunkID++;
 			}
-			completed.set(chunkID);
+			//inprogress.set(chunkID);
 			return chunkID;
 		} catch (IndexOutOfBoundsException e) {
 			return -1;
