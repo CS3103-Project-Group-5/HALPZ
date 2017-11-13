@@ -20,6 +20,7 @@ public class Client {
 	private static String publicIP;
 	private static int totalChunkWritten = 0;
 	private static boolean closeThread = false;
+	private static int maxQueueSize = 0;
 
 	public static void main(String[] args) throws Exception, IOException {
 		local = InetAddress.getLocalHost().toString().split("/")[1];
@@ -135,8 +136,8 @@ public class Client {
 	private static int getDesiredChunkID(BitSet others) {
 		boolean firstLoop = true;
 		try {
-			int start = completed.nextClearBit(0);
-			int end = completed.previousClearBit(totalChunkNumber - 1);
+			int start = inprogress.nextClearBit(0);
+			int end = inprogress.previousClearBit(totalChunkNumber - 1);
 			if (end < start) return -1;
 			int random = (int)(Math.random() * (end - start) + start);
 			int chunkID = random;
@@ -156,7 +157,7 @@ public class Client {
 				if (!firstLoop && chunkID >= random) return -1;
 
 				System.out.println("ChunkID: " + chunkID);
-				chunkID = completed.nextClearBit(chunkID);
+				chunkID = inprogress.nextClearBit(chunkID);
 				System.out.println("New ChunkID: " + chunkID);
 				if (others.get(chunkID)) break;
 				chunkID++;
@@ -245,6 +246,7 @@ public class Client {
 		ByteBuffer bb;
 		bufferForPacket = new byte[4+4+4+chunkSize+(totalChunkNumber+7)/8];
 		receivedPacket = new DatagramPacket(bufferForPacket, bufferForPacket.length);
+		LinkedList<Integer> queue = new LinkedList<Integer>();
 		while (true) {
 			if (closeThread == true) {
 					try {
@@ -273,7 +275,10 @@ public class Client {
 			rawChunkList = new byte[(totalChunkNumber+7)/8];
 			bb.get(rawChunkList);
 			otherChunkList = BitSet.valueOf(rawChunkList);
-
+			System.out.println("Queue size = " + queue.size());
+			if (queue.size() > maxQueueSize) {
+				maxQueueSize = queue.size();
+			}
 			try {
 				if (type == 0) { //type : update
 					System.out.println("Update Message received");
@@ -283,16 +288,29 @@ public class Client {
 						break;
 					}
 					requestedChunkID = Client.getDesiredChunkID(otherChunkList);
+					if (requestedChunkID != -1) {
+						queue.offer(requestedChunkID);
+					} else if (!queue.isEmpty()) {
+						requestedChunkID = queue.poll();
+					}
 					Client.sendChunkRequest(requestedChunkID, clientSocket, peerIP, peerPort);					
-					System.out.println("Sent packet");
 				} else if (type == 1) { //type : request
-					System.out.println("Request Message received");
+					System.out.println("Request Message received from " + peerIP);
 					Client.sendChunkData(chunkID, clientSocket, peerIP, peerPort);
 				} else if (type == 2) { //type : data
-					System.out.println("Data Message received");
+					System.out.println("Data Message received from " + peerIP);
 					Client.writeToFile(RAFile, chunkID, data);
+					if (!new Integer(chunkID).equals(queue.peek()) && queue.size() > 10) {
+						inprogress.clear(queue.poll());
+					}
+					queue.remove(new Integer(chunkID));
 					System.out.println("Received chunk " + chunkID + " from " + peerIP);
 					requestedChunkID = Client.getDesiredChunkID(otherChunkList);
+					if (requestedChunkID != -1) {
+						queue.offer(requestedChunkID);
+					} else if (!queue.isEmpty()) {
+						requestedChunkID = queue.poll();
+					}
 					Client.sendChunkRequest(requestedChunkID, clientSocket, peerIP, peerPort);
 				} else {
 					System.out.println("Unknown message.");
@@ -300,13 +318,13 @@ public class Client {
 			} catch (IOException error) {
 				error.printStackTrace();
 			}		
-			System.out.println("Packet sent");
 		}
 		try {
 			RAFile.close();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+		System.out.println("Max queue size = " + maxQueueSize);
 	}
 
 	private static void sendChunkRequest(int desiredChunkNum, DatagramSocket clientSocket, InetAddress peerIP, int peerPort) throws IOException {
@@ -338,11 +356,11 @@ public class Client {
 	}
 
 	private static void writeToFile(RandomAccessFile RAFile, int id, byte[] data) throws IOException {
-		System.out.println("Total chunks written: " + ++totalChunkWritten);
 		if (completed.get(id)) {
 			return;
 		}
 		try {
+			System.out.println("Total chunks written: " + ++totalChunkWritten);
 			RAFile.seek(id*Client.chunkSize);
 			RAFile.write(data);
 			completed.set(id);
