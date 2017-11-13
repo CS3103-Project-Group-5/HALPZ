@@ -293,6 +293,11 @@ public class Client {
 		//LinkedList<Integer> queue = new LinkedList<Integer>();
 		while (true) {
 			if (closeThread == true) {
+					try {
+						RAFile.close();
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
 				return;
 			}
 			try {
