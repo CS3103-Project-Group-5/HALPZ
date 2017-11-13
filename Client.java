@@ -306,7 +306,7 @@ public class Client {
 					System.out.println("Update Message received");
 					if (completed.nextClearBit(0) >= totalChunkNumber && otherChunkList.nextClearBit(0) >= totalChunkNumber) {
 						System.out.println("Ded");
-						return;
+						break;
 					}
 					requestedChunkID = Client.getDesiredChunkID(otherChunkList);
 					/*
@@ -344,6 +344,11 @@ public class Client {
 			}		
 			System.out.println("Packet sent");
 		}
+		try {
+			RAFile.close();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 	private static void sendChunkRequest(int desiredChunkNum, DatagramSocket clientSocket, InetAddress peerIP, int peerPort) throws IOException {
@@ -378,6 +383,9 @@ public class Client {
 		//File file = new File(fileName);
 		//RandomAccessFile RAFile;
 		//byte[] bytes;	
+		if (completed.get(id)) {
+			return;
+		}
 		try {
 			//if (!file.exists()) {
 			//	file.createNewFile();
@@ -387,7 +395,6 @@ public class Client {
 			RAFile.write(data);
 			completed.set(id);
 			inprogress.set(id);
-			RAFile.close();
 			System.out.println("Total chunks written: " + ++totalChunkWritten);
 		} catch (Exception e) {
 			e.printStackTrace();
