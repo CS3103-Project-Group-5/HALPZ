@@ -98,6 +98,7 @@ class Tracker {
                 peer.setPeerPort(peerPort);
                 peer.setPeerPrivatePort(peerPrivatePort);
 
+
                 break;
                 
                 
@@ -144,6 +145,7 @@ class Tracker {
 
 	private static ArrayList<PeerInfo> getPeerInfoListToSend(String fileName) {
 		FileInfo requiredFile = fileList.get(fileName);
+		if (requiredFile == null) return null;
 		ArrayList<Long> peerIDList = requiredFile.getPeerIDList();
 		Collections.shuffle(peerIDList); //we can use other shuffle algorithms if the peerIDList gets too large to maintain.
 		ArrayList<PeerInfo> peerInfoList = new ArrayList<PeerInfo>();
