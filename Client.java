@@ -320,9 +320,9 @@ public class Client {
 					System.out.println("Request Message received");
 					Client.sendChunkData(chunkID, clientSocket, peerIP, peerPort);
 				} else if (type == 2) { //type : data
-					System.out.print("Data Message received");
+					System.out.println("Data Message received");
 					Client.writeToFile(RAFile, chunkID, data);
-					System.out.print("Received chunk " + chunkID + " from " + peerIP);
+					System.out.println("Received chunk " + chunkID + " from " + peerIP);
 					/*
 					requestedChunkID = queue.poll();
 					if (requestedChunkID != chunkID) {
@@ -383,6 +383,7 @@ public class Client {
 		//File file = new File(fileName);
 		//RandomAccessFile RAFile;
 		//byte[] bytes;	
+		System.out.println("Total chunks written: " + ++totalChunkWritten);
 		if (completed.get(id)) {
 			return;
 		}
@@ -395,7 +396,6 @@ public class Client {
 			RAFile.write(data);
 			completed.set(id);
 			inprogress.set(id);
-			System.out.println("Total chunks written: " + ++totalChunkWritten);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}	
