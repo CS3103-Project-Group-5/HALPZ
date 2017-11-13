@@ -85,6 +85,9 @@ public class Client {
 					myID = msg.getPeerID();
 					fileSize = msg.getFileSize();
 					peerList = msg.getPeerList();
+					if (peerList == null) {
+						break;
+					}
 					peerNumber = peerList.size();
 					totalChunkNumber = (int) Math.ceil(fileSize / (double) chunkSize);
 					inprogress = new BitSet(totalChunkNumber); // <-- need to load file
