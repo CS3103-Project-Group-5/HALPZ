@@ -76,6 +76,7 @@ class Tracker {
                 outgoingMessage.setPeerID(peerID);
                 outgoingMessage.setPublicIP(peerIP);
 				outgoingMessage.setFileSize(requestedFileSize);
+				if (peerListToSend == null) break;
 				createNewPeerRecord(peerID, new PeerInfo(peerID, peerIP, peerPort, peerPrivateIP,peerPrivatePort,requestedFile));
 				associatePeerWithFile(peerID, requestedFile);
 				break;
