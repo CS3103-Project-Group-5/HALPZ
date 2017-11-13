@@ -89,7 +89,7 @@ public class Client {
 					totalChunkNumber = (int) Math.ceil(fileSize / (double) chunkSize);
 					inprogress = new BitSet(totalChunkNumber); // <-- need to load file
 					completed = (BitSet)inprogress.clone();
-					start(peerList);
+					start(peerList, clientSocket);
 					break;
 
 				case 4:
@@ -108,7 +108,7 @@ public class Client {
 					msg = TrackerManager.initializeUpload(clientSocket, fileName, fileSize, clientSocket.getLocalPort(), local);
 					myID = msg.getPeerID();
 					publicIP = msg.getPublicIP();
-					start(new ArrayList<PeerInfo>());
+					start(new ArrayList<PeerInfo>(), clientSocket);
 					break;
 			}
 			clientSocket = new DatagramSocket();
@@ -199,7 +199,7 @@ public class Client {
 		*/
 	}
 	
-	private static void start(ArrayList<PeerInfo> list) throws IOException {
+	private static void start(ArrayList<PeerInfo> list, DatagramSocket clientSocket) throws IOException {
 		connect(clientSocket);
 		
 		for (PeerInfo info : list) {
@@ -631,7 +631,7 @@ public class Client {
 
 class TrackerManager {
 
-	private static final String TRACKER_ADDRESS = "172.25.97.148";
+	private static final String TRACKER_ADDRESS = "128.199.108.79";
 	private static final int TRACKER_PORT = 1234;
 	private DatagramSocket socket;
 	private ObjectOutputStream out;
