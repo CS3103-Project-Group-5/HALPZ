@@ -116,7 +116,7 @@ class Tracker {
 	}
     
     private static long generateID() {
-        Random rnd = new Random(506);
+        Random rnd = new Random();
         long peerID =rnd.nextLong();
         while (peerMap.containsKey(peerID)){
             peerID = rnd.nextLong();
