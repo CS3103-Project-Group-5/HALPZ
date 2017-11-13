@@ -98,6 +98,7 @@ class Tracker {
                 peer.setPeerPrivateIP(peerPrivateIP);
                 peer.setPeerPort(peerPort);
                 peer.setPeerPrivatePort(peerPrivatePort);
+                break;
 
             case EXIT: 
             	peerID = incomingMessage.getPeerID();
