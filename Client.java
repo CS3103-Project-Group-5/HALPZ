@@ -122,6 +122,7 @@ public class Client {
 		}
 		closeThread = true;
 		scanner.close();
+		System.exit(1);
 	}
 
 	private static long generateID() {
