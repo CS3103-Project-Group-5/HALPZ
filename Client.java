@@ -182,9 +182,6 @@ public class Client {
 				new Thread() {
 					public void run() {
 						try {
-							System.out.println(info == null);
-							System.out.println(info.getPeerIP() == null);
-							System.out.println(info.getPeerIP().equals('a'));
 							if (info.getPeerIP().equals(publicIP)) { // same NAT
 								System.out.println("Send request to peer " + info.getPeerPrivateIP() + " with port " + info.getPeerPrivatePort());
 								Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerPrivateIP()), info.getPeerPrivatePort());
