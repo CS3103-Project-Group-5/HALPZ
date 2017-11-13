@@ -130,6 +130,39 @@ public class Client {
 	private static int getDesiredChunkID(BitSet others) {
 		boolean firstLoop = true;
 		try {
+			int start = completed.nextClearBit(0);
+			int end = completed.previousClearBit(totalChunkNumber - 1);
+			if (end < start) return -1;
+			int random = (int)(Math.random() * (end - start) + start);
+			int chunkID = random;
+			while (true) {
+				System.out.println("Start: " + start);
+				System.out.println("End: " + end);
+				System.out.println("Random: " + random);
+				System.out.println("Firstloop: " + firstLoop);
+				if (chunkID >= totalChunkNumber) {
+					if (firstLoop) {
+						chunkID = start;
+						firstLoop = false;
+					} else {
+						return -1;
+					}
+				}
+				if (!firstLoop && chunkID >= random) return -1;
+
+				System.out.println("ChunkID: " + chunkID);
+				chunkID = completed.nextClearBit(chunkID);
+				System.out.println("New ChunkID: " + chunkID);
+				if (others.get(chunkID)) break;
+				chunkID++;
+			}
+			completed.set(chunkID);
+			return chunkID;
+		} catch (IndexOutOfBoundsException e) {
+			return -1;
+		}
+		/*
+		try {
 			int start = inprogress.nextClearBit(0);
 			int end = inprogress.previousClearBit(totalChunkNumber - 1);
 			if (end < start) return -1;
@@ -161,6 +194,7 @@ public class Client {
 		} catch (IndexOutOfBoundsException e) {
 			return -1;
 		}
+		*/
 	}
 	
 	private static void start(ArrayList<PeerInfo> list) throws IOException {
@@ -233,7 +267,7 @@ public class Client {
 		ByteBuffer bb;
 		bufferForPacket = new byte[4+4+4+chunkSize+(totalChunkNumber+7)/8];
 		receivedPacket = new DatagramPacket(bufferForPacket, bufferForPacket.length);
-		LinkedList<Integer> queue = new LinkedList<Integer>();
+		//LinkedList<Integer> queue = new LinkedList<Integer>();
 		while (true) {
 			try {
 				clientSocket.receive(receivedPacket);
@@ -263,9 +297,11 @@ public class Client {
 						return;
 					}
 					requestedChunkID = Client.getDesiredChunkID(otherChunkList);
+					/*
 					if (requestedChunkID != -1) {
 						queue.offer(requestedChunkID);
 					}
+					*/
 					Client.sendChunkRequest(requestedChunkID, clientSocket, peerIP, peerPort);					
 					System.out.println("Sent packet");
 				} else if (type == 1) { //type : request
@@ -275,14 +311,18 @@ public class Client {
 					System.out.print("Data Message received");
 					Client.writeToFile(chunkID, data);
 					System.out.print("Received chunk " + chunkID + " from " + peerIP);
+					/*
 					requestedChunkID = queue.poll();
 					if (requestedChunkID != chunkID) {
 						inprogress.clear(requestedChunkID);
 					}
+					*/
 					requestedChunkID = Client.getDesiredChunkID(otherChunkList);
+					/*
 					if (requestedChunkID != -1) {
 						queue.offer(requestedChunkID);
 					}
+					*/
 					Client.sendChunkRequest(requestedChunkID, clientSocket, peerIP, peerPort);
 				} else {
 					System.out.println("Unknown message.");
@@ -334,6 +374,7 @@ public class Client {
 			RAFile.seek(id*Client.chunkSize);
 			RAFile.write(data);
 			completed.set(id);
+			inprogress.set(id);
 			RAFile.close();
 		} catch (Exception e) {
 			e.printStackTrace();
