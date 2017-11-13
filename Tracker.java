@@ -102,7 +102,7 @@ class Tracker {
             case EXIT: 
             	peerID = incomingMessage.getPeerID();
             	if (peerMap.containsKey(peerID)){
-            		peerMap.remove(peerID);
+            		peerMap.remove(new Long(peerID));
             	} 
                 break;
 		}

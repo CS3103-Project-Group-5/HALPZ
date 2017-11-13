@@ -22,7 +22,7 @@ public class FileInfo implements Serializable {
 	}
 
 	public void deletePeerID(long peerID) {
-		this.peerIDList.remove(peerID);
+		this.peerIDList.remove(new Long(peerID));
 	}
 
 	public long getFileSize() {
