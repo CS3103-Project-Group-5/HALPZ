@@ -18,15 +18,16 @@ public class Client {
 	private static long myID = 0;
 	private static String local;
 	private static String publicIP;
+	private static int totalChunkWritten = 0;
 
 	public static void main(String[] args) throws Exception, IOException {
-		if (args.length > 0) {
-			port = Integer.parseInt(args[0]);
-		}
+		//if (args.length > 0) {
+		//	port = Integer.parseInt(args[0]);
+		//}
 		
 		local = InetAddress.getLocalHost().toString().split("/")[1];
+		clientSocket = new DatagramSocket();
 		System.out.println("My local IP: " + local);
-		clientSocket = new DatagramSocket(port);
 		System.out.println("My local port: " + clientSocket.getLocalPort());
 
 		Scanner scanner = new Scanner(System.in);
@@ -110,6 +111,7 @@ public class Client {
 					start(new ArrayList<PeerInfo>());
 					break;
 			}
+			clientSocket = new DatagramSocket();
 		}
 
 		scanner.close();
@@ -258,12 +260,22 @@ public class Client {
 	}
 
 	private static void process(DatagramSocket clientSocket) {
+		RandomAccessFile RAFile;
+		try {
+			File file = new File(fileName);
+			if (!file.exists()) {
+				file.createNewFile();
+			}
+			RAFile = new RandomAccessFile(file, "rwd");
+		} catch (Exception e) {
+			e.printStackTrace();
+			return;
+		}
 		byte[] bufferForPacket, bufferForPayload, rawChunkList, data;
 		InetAddress peerIP;
 		DatagramPacket receivedPacket;;
 		int type, chunkID, sizeOfData, requestedChunkID, peerPort;
 		BitSet otherChunkList;
-		RandomAccessFile RAFile;
 		ByteBuffer bb;
 		bufferForPacket = new byte[4+4+4+chunkSize+(totalChunkNumber+7)/8];
 		receivedPacket = new DatagramPacket(bufferForPacket, bufferForPacket.length);
@@ -309,7 +321,7 @@ public class Client {
 					Client.sendChunkData(chunkID, clientSocket, peerIP, peerPort);
 				} else if (type == 2) { //type : data
 					System.out.print("Data Message received");
-					Client.writeToFile(chunkID, data);
+					Client.writeToFile(RAFile, chunkID, data);
 					System.out.print("Received chunk " + chunkID + " from " + peerIP);
 					/*
 					requestedChunkID = queue.poll();
@@ -362,20 +374,21 @@ public class Client {
 		bb.clear();
 	}
 
-	private static void writeToFile(int id, byte[] data) throws IOException {
-		File file = new File(fileName);
-		RandomAccessFile RAFile;
-		byte[] bytes;	
+	private static void writeToFile(RandomAccessFile RAFile, int id, byte[] data) throws IOException {
+		//File file = new File(fileName);
+		//RandomAccessFile RAFile;
+		//byte[] bytes;	
 		try {
-			if (!file.exists()) {
-				file.createNewFile();
-			}
-			RAFile = new RandomAccessFile(file, "rwd");
+			//if (!file.exists()) {
+			//	file.createNewFile();
+			//}
+			//RAFile = new RandomAccessFile(file, "rwd");
 			RAFile.seek(id*Client.chunkSize);
 			RAFile.write(data);
 			completed.set(id);
 			inprogress.set(id);
 			RAFile.close();
+			System.out.println("Total chunks written: " + ++totalChunkWritten);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}	
@@ -611,7 +624,7 @@ public class Client {
 
 class TrackerManager {
 
-	private static final String TRACKER_ADDRESS = "128.199.108.79";
+	private static final String TRACKER_ADDRESS = "172.25.97.148";
 	private static final int TRACKER_PORT = 1234;
 	private DatagramSocket socket;
 	private ObjectOutputStream out;
