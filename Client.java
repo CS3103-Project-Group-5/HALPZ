@@ -85,7 +85,8 @@ public class Client {
 					myID = msg.getPeerID();
 					fileSize = msg.getFileSize();
 					peerList = msg.getPeerList();
-					if (peerList == null) {
+					if (peerList.isEmpty()) {
+						System.out.println("Requested file not found");
 						break;
 					}
 					peerNumber = peerList.size();

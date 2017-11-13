@@ -76,7 +76,7 @@ class Tracker {
                 outgoingMessage.setPeerID(peerID);
                 outgoingMessage.setPublicIP(peerIP);
 				outgoingMessage.setFileSize(requestedFileSize);
-				if (peerListToSend == null) break;
+				if (peerListToSend.isEmpty()) break;
 				createNewPeerRecord(peerID, new PeerInfo(peerID, peerIP, peerPort, peerPrivateIP,peerPrivatePort,requestedFile));
 				associatePeerWithFile(peerID, requestedFile);
 				break;
@@ -146,7 +146,7 @@ class Tracker {
 
 	private static ArrayList<PeerInfo> getPeerInfoListToSend(String fileName) {
 		FileInfo requiredFile = fileList.get(fileName);
-		if (requiredFile == null) return null;
+		if (requiredFile == null) return new ArrayList<PeerInfo>() ;
 		ArrayList<Long> peerIDList = requiredFile.getPeerIDList();
 		Collections.shuffle(peerIDList); //we can use other shuffle algorithms if the peerIDList gets too large to maintain.
 		ArrayList<PeerInfo> peerInfoList = new ArrayList<PeerInfo>();
