@@ -99,7 +99,11 @@ class Tracker {
                 peer.setPeerPort(peerPort);
                 peer.setPeerPrivatePort(peerPrivatePort);
 
-
+            case EXIT: 
+            	peerID = incomingMessage.getPeerID();
+            	if (peerMap.containsKey(peerID)){
+            		peerMap.remove(peerID);
+            	} 
                 break;
                 
                 
