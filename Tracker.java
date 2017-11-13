@@ -102,7 +102,14 @@ class Tracker {
             case EXIT: 
             	peerID = incomingMessage.getPeerID();
             	if (peerMap.containsKey(peerID)){
+            		PeerInfo p = peerMap.get(new Long(peerID));
+            		String fn = p.getFileName();
+            		if (fileList.containsKey(fn)){
+            			FileInfo f = fileList.get(fn);
+            			f.deletePeerID(peerID);
+            		}
             		peerMap.remove(peerID);
+
             	} 
                 break;
                 
