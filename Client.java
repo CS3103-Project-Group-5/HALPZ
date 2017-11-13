@@ -325,6 +325,7 @@ public class Client {
 				if (type == 0) { //type : update
 					System.out.println("Update Message received");
 					if (completed.nextClearBit(0) >= totalChunkNumber && otherChunkList.nextClearBit(0) >= totalChunkNumber) {
+						Client.sendChunkRequest(-1, clientSocket, peerIP, peerPort);					
 						System.out.println("Ded");
 						break;
 					}
