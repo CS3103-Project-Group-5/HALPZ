@@ -121,11 +121,6 @@ public class Client {
 		System.exit(1);
 	}
 
-	private static long generateID() {
-		Random rnd = new Random(506);
-		return rnd.nextLong();
-	}
-
 	private static void printFileList(Set<String> list) {
 		System.out.println("File list: ");
 		for (String s : list) {
