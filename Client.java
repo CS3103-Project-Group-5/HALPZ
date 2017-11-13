@@ -19,6 +19,7 @@ public class Client {
 	private static String local;
 	private static String publicIP;
 	private static int totalChunkWritten = 0;
+	private static boolean closeThread = false;
 
 	public static void main(String[] args) throws Exception, IOException {
 		//if (args.length > 0) {
@@ -115,7 +116,9 @@ public class Client {
 					start(new ArrayList<PeerInfo>(), clientSocket);
 					break;
 			}
+
 			clientSocket = new DatagramSocket();
+			closeThread = true;
 		}
 
 		scanner.close();
@@ -289,6 +292,9 @@ public class Client {
 		receivedPacket = new DatagramPacket(bufferForPacket, bufferForPacket.length);
 		//LinkedList<Integer> queue = new LinkedList<Integer>();
 		while (true) {
+			if (closeThread == true) {
+				return;
+			}
 			try {
 				clientSocket.receive(receivedPacket);
 				System.out.println("Packet Received");			
