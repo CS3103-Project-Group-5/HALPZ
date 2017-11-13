@@ -118,9 +118,9 @@ public class Client {
 			}
 
 			clientSocket = new DatagramSocket();
-			closeThread = true;
+			
 		}
-
+		closeThread = true;
 		scanner.close();
 	}
 
@@ -293,6 +293,11 @@ public class Client {
 		//LinkedList<Integer> queue = new LinkedList<Integer>();
 		while (true) {
 			if (closeThread == true) {
+					try {
+						RAFile.close();
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
 				return;
 			}
 			try {
