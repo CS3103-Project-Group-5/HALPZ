@@ -121,11 +121,6 @@ public class Client {
 		System.exit(1);
 	}
 
-	private static long generateID() {
-		Random rnd = new Random(506);
-		return rnd.nextLong();
-	}
-
 	private static void printFileList(Set<String> list) {
 		System.out.println("File list: ");
 		for (String s : list) {
@@ -397,7 +392,7 @@ public class Client {
 
 class TrackerManager {
 
-	private static final String TRACKER_ADDRESS = "128.199.108.79";
+	private static final String TRACKER_ADDRESS = "172.25.105.20";
 	private static final int TRACKER_PORT = 1234;
 	private DatagramSocket socket;
 	private ObjectOutputStream out;
