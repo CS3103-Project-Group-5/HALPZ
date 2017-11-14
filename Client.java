@@ -177,9 +177,6 @@ public class Client {
 				new Thread() {
 					public void run() {
 						try {
-							System.out.println(info == null);
-							System.out.println(info.getPeerIP() == null);
-							System.out.println(info.getPeerIP().equals('a'));
 							if (info.getPeerIP().equals(publicIP)) { // same NAT
 								System.out.println("Send request to peer " + info.getPeerPrivateIP() + " with port " + info.getPeerPrivatePort());
 								Client.sendChunkRequest(-1, s, InetAddress.getByName(info.getPeerPrivateIP()), info.getPeerPrivatePort());
@@ -395,7 +392,7 @@ public class Client {
 
 class TrackerManager {
 
-	private static final String TRACKER_ADDRESS = "128.199.108.79";
+	private static final String TRACKER_ADDRESS = "172.25.105.20";
 	private static final int TRACKER_PORT = 1234;
 	private DatagramSocket socket;
 	private ObjectOutputStream out;
