@@ -18,7 +18,6 @@ public class Client {
 	private static long myID = 0;
 	private static String local;
 	private static String publicIP;
-	private static int totalChunkWritten = 0;
 	private static boolean closeThread = false;
 	private static int maxQueueSize = 0;
 
@@ -137,10 +136,12 @@ public class Client {
 			int random = (int)(Math.random() * (end - start) + start);
 			int chunkID = random;
 			while (true) {
+				/*
 				System.out.println("Start: " + start);
 				System.out.println("End: " + end);
 				System.out.println("Random: " + random);
 				System.out.println("Firstloop: " + firstLoop);
+				*/
 				if (chunkID >= totalChunkNumber) {
 					if (firstLoop) {
 						chunkID = start;
@@ -151,9 +152,9 @@ public class Client {
 				}
 				if (!firstLoop && chunkID >= random) return -1;
 
-				System.out.println("ChunkID: " + chunkID);
+				//System.out.println("ChunkID: " + chunkID);
 				chunkID = inprogress.nextClearBit(chunkID);
-				System.out.println("New ChunkID: " + chunkID);
+				//System.out.println("New ChunkID: " + chunkID);
 				if (others.get(chunkID)) break;
 				chunkID++;
 			}
@@ -355,7 +356,6 @@ public class Client {
 			return;
 		}
 		try {
-			System.out.println("Total chunks written: " + ++totalChunkWritten);
 			RAFile.seek(id*Client.chunkSize);
 			RAFile.write(data);
 			completed.set(id);
